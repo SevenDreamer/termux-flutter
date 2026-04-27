@@ -13,7 +13,7 @@ arch = ['arm64'] # arm, arm64, x86, x64
 runtime = ['debug', 'release'] # debug, release, profile
 gclient = './.gclient'
 
-# patches disabled for now, will fix after seeing build errors
+# patches replaced by setup_termux() method
 # [patch.engine]
 # file = './patches/engine.patch'
 # path = '.'
