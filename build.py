@@ -162,6 +162,7 @@ class Build:
             '--gn-args', 'is_termux=true',
             '--gn-args', f'is_termux_host={utils.__TERMUX__}',
             '--gn-args', f'termux_api_level={api}',
+            '--gn-args', 'custom_target_triple="aarch64-linux-android"',
         ]
         subprocess.run(cmd, cwd=root, check=True, stdout=True, stderr=True)
 
