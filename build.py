@@ -154,6 +154,7 @@ config("compiler") {
       "-funwind-tables",
       "-fno-short-enums",
       "-nostdinc++",
+      "-Wno-unknown-warning-option",
     ]
     cflags_cc = ["-fvisibility-inlines-hidden"]
     cflags_objcc = ["-fvisibility-inlines-hidden"]
