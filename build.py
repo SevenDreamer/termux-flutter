@@ -446,7 +446,22 @@ typedef struct VkNativeBufferANDROID {
 
 typedef void* buffer_handle_t;
 
+// Additional Android Vulkan extension types
+typedef struct VkPhysicalDevicePresentationPropertiesANDROID {
+    VkStructureType sType;
+    void* pNext;
+    VkBool32 supportsImageSharing;
+} VkPhysicalDevicePresentationPropertiesANDROID;
+
+typedef struct VkAndroidHardwareBufferUsageANDROID {
+    VkStructureType sType;
+    void* pNext;
+    VkFlags64 androidHardwareBufferUsage;
+} VkAndroidHardwareBufferUsageANDROID;
+
 #define VK_STRUCTURE_TYPE_NATIVE_BUFFER_ANDROID 1000000006
+#define VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENTATION_PROPERTIES_ANDROID 1000000007
+#define VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_USAGE_ANDROID 1000000008
 
 #ifdef __cplusplus
 }
