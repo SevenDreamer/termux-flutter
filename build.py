@@ -434,7 +434,11 @@ typedef struct VkNativeBufferUsageANDROID {
     uint32_t androidUsage;
 } VkNativeBufferUsageANDROID;
 
-typedef void* buffer_handle_t;
+// Forward declare native_handle for compatibility
+struct native_handle;
+typedef struct native_handle native_handle_t;
+// buffer_handle_t is compatible with native_handle_t*
+typedef const native_handle_t* buffer_handle_t;
 
 typedef struct VkNativeBufferANDROID {
     VkStructureType sType;
@@ -447,6 +451,12 @@ typedef struct VkNativeBufferANDROID {
     // Additional fields needed by swiftshader
     buffer_handle_t handle;
     int stride;
+    // nativeBufferInfo sub-struct fields (accessed as .nativeBufferInfo.format/usage)
+    struct {
+        buffer_handle_t handle;
+        int format;
+        int usage;
+    } nativeBufferInfo;
 } VkNativeBufferANDROID;
 
 // Additional Android Vulkan extension types
@@ -462,9 +472,40 @@ typedef struct VkAndroidHardwareBufferUsageANDROID {
     VkFlags64 androidHardwareBufferUsage;
 } VkAndroidHardwareBufferUsageANDROID;
 
+// Additional Android Hardware Buffer types needed by swiftshader
+typedef struct VkAndroidHardwareBufferFormatPropertiesANDROID {
+    VkStructureType sType;
+    void* pNext;
+    uint32_t format;
+    uint64_t externalFormat;
+    uint64_t formatFeatures;
+    uint32_t samplerYcbcrConversionComponents[4];
+    uint32_t suggestedYcbcrModel;
+    uint32_t suggestedYcbcrRange;
+    uint32_t suggestedXChromaOffset;
+    uint32_t suggestedYChromaOffset;
+} VkAndroidHardwareBufferFormatPropertiesANDROID;
+
+typedef struct VkAndroidHardwareBufferPropertiesANDROID {
+    VkStructureType sType;
+    void* pNext;
+    uint64_t allocationSize;
+    uint32_t memoryTypeBits;
+} VkAndroidHardwareBufferPropertiesANDROID;
+
+typedef struct VkExternalFormatANDROID {
+    VkStructureType sType;
+    void* pNext;
+    uint64_t externalFormat;
+} VkExternalFormatANDROID;
+
 #define VK_STRUCTURE_TYPE_NATIVE_BUFFER_ANDROID 1000000006
 #define VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENTATION_PROPERTIES_ANDROID 1000000007
 #define VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_USAGE_ANDROID 1000000008
+#define VK_STRUCTURE_TYPE_SWAPCHAIN_IMAGE_CREATE_INFO_ANDROID 1000000009
+#define VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_PROPERTIES_ANDROID 1000129001
+#define VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_FORMAT_PROPERTIES_ANDROID 1000129002
+#define VK_STRUCTURE_TYPE_EXTERNAL_FORMAT_ANDROID 1000129004
 
 // Android Vulkan extension function stubs
 typedef VkResult (VKAPI_PTR *PFN_vkGetSwapchainGrallocUsageANDROID)(VkDevice device, VkFormat format, VkImageUsageFlags imageUsage, int* grallocUsage);
@@ -498,6 +539,19 @@ static inline VkResult vkQueueSignalReleaseImageANDROID(VkQueue queue, uint32_t 
 
 #include <stdint.h>
 #include <sys/cdefs.h>
+
+// Forward declare Vulkan types and function pointers
+#define VKAPI_PTR
+
+typedef struct VkInstance_T* VkInstance;
+typedef struct VkPhysicalDevice_T* VkPhysicalDevice;
+typedef uint32_t VkFlags;
+typedef uint64_t VkFlags64;
+typedef VkFlags VkInstanceCreateInfoFlags;
+typedef enum VkResult { VK_SUCCESS = 0 } VkResult;
+typedef VkResult (VKAPI_PTR *PFN_vkEnumerateInstanceExtensionProperties)(const char*, uint32_t*, void*);
+typedef VkResult (VKAPI_PTR *PFN_vkCreateInstance)(const void*, const void*, VkInstance*);
+typedef void* (VKAPI_PTR *PFN_vkGetInstanceProcAddr)(VkInstance, const char*);
 
 __BEGIN_DECLS
 
@@ -538,6 +592,10 @@ typedef struct hwvulkan_module_t {
 
 typedef struct hwvulkan_device_t {
     hw_device_t common;
+    // Vulkan function pointers required by swiftshader
+    PFN_vkEnumerateInstanceExtensionProperties EnumerateInstanceExtensionProperties;
+    PFN_vkCreateInstance CreateInstance;
+    PFN_vkGetInstanceProcAddr GetInstanceProcAddr;
 } hwvulkan_device_t;
 
 __END_DECLS
