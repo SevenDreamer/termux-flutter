@@ -385,6 +385,37 @@ if (is_termux) {
                 logger.info(f"✓ Patched testing/BUILD.gn")
             else:
                 logger.info("✓ testing/BUILD.gn already patched")
+        
+        # 修改 flutter/shell/platform/linux/config/BUILD.gn (跳过 pkg_config)
+        linux_config_path = engine_src / 'flutter/shell/platform/linux/config/BUILD.gn'
+        if linux_config_path.exists():
+            content = linux_config_path.read_text()
+            
+            if 'is_termux' not in content:
+                import_gni = 'import("//build/config/linux/pkg_config.gni")\n'
+                content = content.replace(import_gni, import_gni + 'import("//build/config/termux/termux.gni")\n')
+                
+                # 在每个 pkg_config 调用外加 is_termux 判断
+                content = content.replace(
+                    'pkg_config(pkg.name) {\n',
+                    '''if (!is_termux) {
+    pkg_config(pkg.name) {
+'''
+                )
+                content = content.replace(
+                    '    packages = [ pkg.pkg ]\n  }\n',
+                    '''    packages = [ pkg.pkg ]
+    }
+  }
+  if (is_termux) {
+    libs = [ pkg.pkg ]
+  }
+'''
+                )
+                linux_config_path.write_text(content)
+                logger.info(f"✓ Patched linux/config/BUILD.gn")
+            else:
+                logger.info("✓ linux/config/BUILD.gn already patched")
 
     def patch(self, *, file, path):
         repo = git.Repo(path)
