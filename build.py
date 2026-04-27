@@ -425,13 +425,24 @@ if (is_termux) {
 extern "C" {
 #endif
 
+// This should be a bitmask type (integer), not a struct
+typedef VkFlags VkSwapchainImageUsageFlagsANDROID;
+
 typedef struct VkNativeBufferUsageANDROID {
+    VkStructureType sType;
+    void* pNext;
     uint32_t androidUsage;
 } VkNativeBufferUsageANDROID;
 
-typedef struct VkSwapchainImageUsageFlagsANDROID {
-    VkImageUsageFlags usage;
-} VkSwapchainImageUsageFlagsANDROID;
+typedef struct VkNativeBufferANDROID {
+    VkStructureType sType;
+    void* pNext;
+    uint32_t allocationSize;
+    uint32_t* pStride;
+    void* buffer;
+    uint32_t offset;
+    uint32_t range;
+} VkNativeBufferANDROID;
 
 typedef void* buffer_handle_t;
 
