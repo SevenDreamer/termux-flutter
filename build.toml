@@ -13,17 +13,18 @@ arch = ['arm64'] # arm, arm64, x86, x64
 runtime = ['debug', 'release'] # debug, release, profile
 gclient = './.gclient'
 
-[patch.engine]
-file = './patches/engine.patch'
-path = '.'
+# patches disabled for now, will fix after seeing build errors
+# [patch.engine]
+# file = './patches/engine.patch'
+# path = '.'
 
-[patch.dart]
-file = './patches/dart.patch'
-path = 'engine/src/flutter/third_party/dart'
+# [patch.dart]
+# file = './patches/dart.patch'
+# path = 'engine/src/flutter/third_party/dart'
 
-[patch.skia]
-file = './patches/skia.patch'
-path = 'engine/src/flutter/third_party/skia'
+# [patch.skia]
+# file = './patches/skia.patch'
+# path = 'engine/src/flutter/third_party/skia'
 
 [sysroot]
 path = './sysroot'
