@@ -386,36 +386,26 @@ if (is_termux) {
             else:
                 logger.info("✓ testing/BUILD.gn already patched")
         
-        # 修改 flutter/shell/platform/linux/config/BUILD.gn (跳过 pkg_config)
-        linux_config_path = engine_src / 'flutter/shell/platform/linux/config/BUILD.gn'
-        if linux_config_path.exists():
-            content = linux_config_path.read_text()
+        # 修改 flutter/shell/platform/linux/BUILD.gn (跳过 config 依赖)
+        linux_shell_path = engine_src / 'flutter/shell/platform/linux/BUILD.gn'
+        if linux_shell_path.exists():
+            content = linux_shell_path.read_text()
             
             if 'is_termux' not in content:
-                import_gni = 'import("//build/config/linux/pkg_config.gni")\n'
-                content = content.replace(import_gni, import_gni + 'import("//build/config/termux/termux.gni")\n')
-                
-                # 在每个 pkg_config 调用外加 is_termux 判断
+                # 添加 termux.gni import
                 content = content.replace(
-                    'pkg_config(pkg.name) {\n',
-                    '''if (!is_termux) {
-    pkg_config(pkg.name) {
-'''
+                    'import("//flutter/shell/platform/linux/config/config.gni")\n',
+                    'import("//flutter/shell/platform/linux/config/config.gni")\nimport("//build/config/termux/termux.gni")\n'
                 )
+                # 跳过 config:gtk 依赖
                 content = content.replace(
-                    '    packages = [ pkg.pkg ]\n  }\n',
-                    '''    packages = [ pkg.pkg ]
-    }
-  }
-  if (is_termux) {
-    libs = [ pkg.pkg ]
-  }
-'''
+                    'configs += [ "//flutter/shell/platform/linux/config:gtk" ]',
+                    'if (!is_termux) { configs += [ "//flutter/shell/platform/linux/config:gtk" ] }'
                 )
-                linux_config_path.write_text(content)
-                logger.info(f"✓ Patched linux/config/BUILD.gn")
+                linux_shell_path.write_text(content)
+                logger.info(f"✓ Patched linux/BUILD.gn")
             else:
-                logger.info("✓ linux/config/BUILD.gn already patched")
+                logger.info("✓ linux/BUILD.gn already patched")
 
     def patch(self, *, file, path):
         repo = git.Repo(path)
