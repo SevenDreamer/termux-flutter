@@ -407,6 +407,43 @@ if (is_termux) {
                 logger.info(f"✓ Patched linux/BUILD.gn")
             else:
                 logger.info("✓ linux/BUILD.gn already patched")
+        
+        # 创建 Android Vulkan 扩展 stub 头文件 (swiftshader 需要)
+        vulkan_dir = engine_src / 'third_party/vulkan-deps/vulkan-headers/src/include/vulkan'
+        vulkan_dir.mkdir(parents=True, exist_ok=True)
+        vk_android_header = vulkan_dir / 'vk_android_native_buffer.h'
+        if not vk_android_header.exists():
+            vk_android_header.write_text('''// Stub header for Termux build
+// Original is part of Android NDK Vulkan extensions
+
+#ifndef VULKAN_VK_ANDROID_NATIVE_BUFFER_H_
+#define VULKAN_VK_ANDROID_NATIVE_BUFFER_H_ 1
+
+#include "vulkan.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct VkNativeBufferUsageANDROID {
+    uint32_t androidUsage;
+} VkNativeBufferUsageANDROID;
+
+typedef struct VkSwapchainImageUsageFlagsANDROID {
+    VkImageUsageFlags usage;
+} VkSwapchainImageUsageFlagsANDROID;
+
+typedef void* buffer_handle_t;
+
+#define VK_STRUCTURE_TYPE_NATIVE_BUFFER_ANDROID 1000000006
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif  // VULKAN_VK_ANDROID_NATIVE_BUFFER_H_
+''')
+            logger.info(f"✓ Created vulkan/vk_android_native_buffer.h stub")
 
     def patch(self, *, file, path):
         repo = git.Repo(path)
