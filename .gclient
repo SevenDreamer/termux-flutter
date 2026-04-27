@@ -25,21 +25,21 @@ solutions = [
       "download_fuchsia_deps" : False,
     },
     "custom_hooks" : [
-      {
-        'name': 'patch engine',
-        'pattern': '.',
-        'action': ['git', "apply", "../patches/engine.patch"],
-      },
-      {
-        'name': 'patch dart',
-        'pattern': '.',
-        'action': ['git', "-C", "engine/src/flutter/third_party/dart", "apply", "../../../../../../patches/dart.patch"],
-      },
-      {
-        'name': 'patch skia',
-        'pattern': '.',
-        'action': ['git', "-C", "engine/src/flutter/third_party/skia", "apply", "../../../../../../patches/skia.patch"],
-      },
+      # {
+      #   'name': 'patch engine',
+      #   'pattern': '.',
+      #   'action': ['git', "apply", "../patches/engine.patch"],
+      # },
+      # {
+      #   'name': 'patch dart',
+      #   'pattern': '.',
+      #   'action': ['git', "-C", "engine/src/flutter/third_party/dart", "apply", "../../../../../../patches/dart.patch"],
+      # },
+      # {
+      #   'name': 'patch skia',
+      #   'pattern': '.',
+      #   'action': ['git', "-C", "engine/src/flutter/third_party/skia", "apply", "../../../../../../patches/skia.patch"],
+      # },
     ]
   }
 ]
