@@ -470,6 +470,107 @@ typedef struct VkAndroidHardwareBufferUsageANDROID {
 #endif  // VULKAN_VK_ANDROID_NATIVE_BUFFER_H_
 ''')
             logger.info(f"✓ Created vulkan/vk_android_native_buffer.h stub")
+        
+        # 创建 hardware/hwvulkan.h stub
+        hardware_dir = engine_src / 'hardware'
+        hardware_dir.mkdir(parents=True, exist_ok=True)
+        hwvulkan_header = hardware_dir / 'hwvulkan.h'
+        if not hwvulkan_header.exists():
+            hwvulkan_header.write_text('''// Stub header for Termux build
+// Original is part of Android NDK hardware headers
+
+#ifndef HARDWARE_HWVULKAN_H_
+#define HARDWARE_HWVULKAN_H_
+
+#include <stdint.h>
+#include <sys/cdefs.h>
+
+__BEGIN_DECLS
+
+#define HWVULKAN_HARDWARE_MODULE_ID "vulkan"
+
+typedef struct hw_module_t {
+    uint32_t tag;
+    uint16_t module_api_version;
+    uint16_t hal_api_version;
+    const char* id;
+    const char* name;
+    const char* author;
+} hw_module_t;
+
+typedef struct hwvulkan_module_t {
+    hw_module_t common;
+} hwvulkan_module_t;
+
+__END_DECLS
+
+#endif  // HARDWARE_HWVULKAN_H_
+''')
+            logger.info(f"✓ Created hardware/hwvulkan.h stub")
+        
+        # 创建 vndk/hardware_buffer.h stub
+        vndk_dir = engine_src / 'vndk'
+        vndk_dir.mkdir(parents=True, exist_ok=True)
+        hwbuffer_header = vndk_dir / 'hardware_buffer.h'
+        if not hwbuffer_header.exists():
+            hwbuffer_header.write_text('''// Stub header for Termux build
+// Original is part of Android NDK VNDK
+
+#ifndef VNDK_HARDWARE_BUFFER_H_
+#define VNDK_HARDWARE_BUFFER_H_
+
+#include <stdint.h>
+#include <sys/cdefs.h>
+
+__BEGIN_DECLS
+
+typedef const native_handle_t* AHardwareBuffer;
+
+typedef enum {
+    AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM = 1,
+    AHARDWAREBUFFER_FORMAT_R8G8B8X8_UNORM = 2,
+    AHARDWAREBUFFER_FORMAT_R8G8B8_UNORM = 3,
+    AHARDWAREBUFFER_FORMAT_R5G6B5_UNORM = 4,
+    AHARDWAREBUFFER_FORMAT_R16G16B16A16_FLOAT = 0x16,
+    AHARDWAREBUFFER_FORMAT_R10G10B10A2_UNORM = 0x2b,
+    AHARDWAREBUFFER_FORMAT_BLOB = 0x21,
+} AHardwareBufferFormat;
+
+typedef enum {
+    AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE = 1ULL << 0,
+    AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT = 1ULL << 2,
+    AHARDWAREBUFFER_USAGE_GPU_CUBE_MAP = 1ULL << 7,
+    AHARDWAREBUFFER_USAGE_GPU_MIPMAP_COMPLETE = 1ULL << 8,
+    AHARDWAREBUFFER_USAGE_GPU_DATA_BUFFER = 1ULL << 24,
+    AHARDWAREBUFFER_USAGE_PROTECTED_CONTENT = 1ULL << 14,
+    AHARDWAREBUFFER_USAGE_VIDEO_ENCODE = 1ULL << 6,
+    AHARDWAREBUFFER_USAGE_VIDEO_DECODE = 1ULL << 13,
+} AHardwareBufferUsage;
+
+typedef struct AHardwareBuffer_Desc {
+    uint32_t width;
+    uint32_t height;
+    uint32_t layers;
+    uint32_t format;
+    uint64_t usage;
+    uint32_t stride;
+    uint32_t rfu0;
+    uint64_t rfu1;
+} AHardwareBuffer_Desc;
+
+inline void AHardwareBuffer_describe(AHardwareBuffer* buffer, AHardwareBuffer_Desc* outDesc) {
+    (void)buffer;
+    (void)outDesc;
+}
+
+inline void AHardwareBuffer_acquire(AHardwareBuffer* buffer) { (void)buffer; }
+inline void AHardwareBuffer_release(AHardwareBuffer* buffer) { (void)buffer; }
+
+__END_DECLS
+
+#endif  // VNDK_HARDWARE_BUFFER_H_
+''')
+            logger.info(f"✓ Created vndk/hardware_buffer.h stub")
 
     def patch(self, *, file, path):
         repo = git.Repo(path)
