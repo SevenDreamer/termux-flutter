@@ -434,6 +434,8 @@ typedef struct VkNativeBufferUsageANDROID {
     uint32_t androidUsage;
 } VkNativeBufferUsageANDROID;
 
+typedef void* buffer_handle_t;
+
 typedef struct VkNativeBufferANDROID {
     VkStructureType sType;
     void* pNext;
@@ -442,9 +444,10 @@ typedef struct VkNativeBufferANDROID {
     void* buffer;
     uint32_t offset;
     uint32_t range;
+    // Additional fields needed by swiftshader
+    buffer_handle_t handle;
+    int stride;
 } VkNativeBufferANDROID;
-
-typedef void* buffer_handle_t;
 
 // Additional Android Vulkan extension types
 typedef struct VkPhysicalDevicePresentationPropertiesANDROID {
@@ -462,6 +465,18 @@ typedef struct VkAndroidHardwareBufferUsageANDROID {
 #define VK_STRUCTURE_TYPE_NATIVE_BUFFER_ANDROID 1000000006
 #define VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENTATION_PROPERTIES_ANDROID 1000000007
 #define VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_USAGE_ANDROID 1000000008
+
+// Android Vulkan extension function stubs
+typedef VkResult (VKAPI_PTR *PFN_vkGetSwapchainGrallocUsageANDROID)(VkDevice device, VkFormat format, VkImageUsageFlags imageUsage, int* grallocUsage);
+typedef VkResult (VKAPI_PTR *PFN_vkGetSwapchainGrallocUsage2ANDROID)(VkDevice device, VkFormat format, VkImageUsageFlags imageUsage, VkSwapchainImageUsageFlagsANDROID swapchainImageUsage, uint64_t* grallocUsage, uint64_t* grallocUsage2);
+typedef VkResult (VKAPI_PTR *PFN_vkAcquireImageANDROID)(VkDevice device, VkImage image, int nativeFenceFd, VkSemaphore semaphore, VkFence fence);
+typedef VkResult (VKAPI_PTR *PFN_vkQueueSignalReleaseImageANDROID)(VkQueue queue, uint32_t waitSemaphoreCount, const VkSemaphore* pWaitSemaphores, VkImage image, int* pNativeFenceFd);
+
+// Stub implementations (return success)
+static inline VkResult vkGetSwapchainGrallocUsageANDROID(VkDevice device, VkFormat format, VkImageUsageFlags imageUsage, int* grallocUsage) { *grallocUsage = 0; return VK_SUCCESS; }
+static inline VkResult vkGetSwapchainGrallocUsage2ANDROID(VkDevice device, VkFormat format, VkImageUsageFlags imageUsage, VkSwapchainImageUsageFlagsANDROID swapchainImageUsage, uint64_t* grallocUsage, uint64_t* grallocUsage2) { *grallocUsage = 0; *grallocUsage2 = 0; return VK_SUCCESS; }
+static inline VkResult vkAcquireImageANDROID(VkDevice device, VkImage image, int nativeFenceFd, VkSemaphore semaphore, VkFence fence) { return VK_SUCCESS; }
+static inline VkResult vkQueueSignalReleaseImageANDROID(VkQueue queue, uint32_t waitSemaphoreCount, const VkSemaphore* pWaitSemaphores, VkImage image, int* pNativeFenceFd) { *pNativeFenceFd = -1; return VK_SUCCESS; }
 
 #ifdef __cplusplus
 }
@@ -488,6 +503,17 @@ typedef struct VkAndroidHardwareBufferUsageANDROID {
 __BEGIN_DECLS
 
 #define HWVULKAN_HARDWARE_MODULE_ID "vulkan"
+#define HARDWARE_DEVICE_TAG 0
+#define HWVULKAN_DEVICE_API_VERSION_0_1 0
+#define HWVULKAN_DEVICE_0 "vulkan0"
+
+typedef struct hw_device_t {
+    uint32_t tag;
+    uint32_t version;
+    struct hw_module_t* module;
+    uint32_t reserved[12];
+    int (*close)(struct hw_device_t* device);
+} hw_device_t;
 
 typedef struct hw_module_t {
     uint32_t tag;
@@ -496,11 +522,21 @@ typedef struct hw_module_t {
     const char* id;
     const char* name;
     const char* author;
+    struct hw_module_methods_t* methods;
+    uint32_t reserved[32-7];
 } hw_module_t;
+
+typedef struct hw_module_methods_t {
+    int (*open)(const struct hw_module_t* module, const char* id, struct hw_device_t** device);
+} hw_module_methods_t;
 
 typedef struct hwvulkan_module_t {
     hw_module_t common;
 } hwvulkan_module_t;
+
+typedef struct hwvulkan_device_t {
+    hw_device_t common;
+} hwvulkan_device_t;
 
 __END_DECLS
 
@@ -523,6 +559,10 @@ __END_DECLS
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
+
+// native_handle_t forward declaration
+struct native_handle;
+typedef struct native_handle native_handle_t;
 
 typedef const native_handle_t* AHardwareBuffer;
 
@@ -558,13 +598,53 @@ typedef struct AHardwareBuffer_Desc {
     uint64_t rfu1;
 } AHardwareBuffer_Desc;
 
-inline void AHardwareBuffer_describe(AHardwareBuffer* buffer, AHardwareBuffer_Desc* outDesc) {
-    (void)buffer;
-    (void)outDesc;
+// Additional enums and structs needed by swiftshader
+typedef enum {
+    AHARDWAREBUFFER_USAGE_CPU_READ_RARELY = 1ULL << 30,
+    AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN = 3ULL << 30,
+    AHARDWAREBUFFER_USAGE_CPU_WRITE_RARELY = 1ULL << 28,
+    AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN = 3ULL << 28,
+} AHardwareBufferUsage2;
+
+typedef struct ARect {
+    int32_t left;
+    int32_t top;
+    int32_t right;
+    int32_t bottom;
+} ARect;
+
+typedef struct AHardwareBuffer_Plane {
+    void* data;
+    uint32_t pixelStride;
+    uint32_t rowStride;
+} AHardwareBuffer_Plane;
+
+typedef struct AHardwareBuffer_Planes {
+    uint32_t planeCount;
+    AHardwareBuffer_Plane planes[4];
+} AHardwareBuffer_Planes;
+
+#define AHARDWAREBUFFER_CREATE_FROM_HANDLE_METHOD_CLONE 1
+
+// Function stubs
+inline int AHardwareBuffer_describe(AHardwareBuffer* buffer, AHardwareBuffer_Desc* outDesc) {
+    (void)buffer; (void)outDesc; return 0;
 }
 
 inline void AHardwareBuffer_acquire(AHardwareBuffer* buffer) { (void)buffer; }
 inline void AHardwareBuffer_release(AHardwareBuffer* buffer) { (void)buffer; }
+inline int AHardwareBuffer_lock(AHardwareBuffer* buffer, uint64_t usage, int32_t fence, const ARect* rect, void** outVirtualAddr) {
+    (void)buffer; (void)usage; (void)fence; (void)rect; *outVirtualAddr = nullptr; return 0;
+}
+inline int AHardwareBuffer_unlock(AHardwareBuffer* buffer, int32_t* fence) {
+    (void)buffer; if (fence) *fence = -1; return 0;
+}
+inline int AHardwareBuffer_lockPlanes(AHardwareBuffer* buffer, uint64_t usage, int32_t fence, const ARect* rect, AHardwareBuffer_Planes* outPlanes) {
+    (void)buffer; (void)usage; (void)fence; (void)rect; (void)outPlanes; return -1;
+}
+inline int AHardwareBuffer_createFromHandle(const AHardwareBuffer_Desc* desc, const native_handle_t* handle, int method, AHardwareBuffer** outBuffer) {
+    (void)desc; (void)handle; (void)method; *outBuffer = nullptr; return -1;
+}
 
 __END_DECLS
 
