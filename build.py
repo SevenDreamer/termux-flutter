@@ -484,14 +484,13 @@ static inline VkResult vkQueueSignalReleaseImageANDROID(VkQueue queue, uint32_t 
 
 #endif  // VULKAN_VK_ANDROID_NATIVE_BUFFER_H_
 ''')
-            logger.info(f"✓ Created vulkan/vk_android_native_buffer.h stub")
+        logger.info(f"✓ Created vulkan/vk_android_native_buffer.h stub")
         
         # 创建 hardware/hwvulkan.h stub
         hardware_dir = engine_src / 'hardware'
         hardware_dir.mkdir(parents=True, exist_ok=True)
         hwvulkan_header = hardware_dir / 'hwvulkan.h'
-        if not hwvulkan_header.exists():
-            hwvulkan_header.write_text('''// Stub header for Termux build
+        hwvulkan_header.write_text('''// Stub header for Termux build
 // Original is part of Android NDK hardware headers
 
 #ifndef HARDWARE_HWVULKAN_H_
@@ -503,8 +502,11 @@ static inline VkResult vkQueueSignalReleaseImageANDROID(VkQueue queue, uint32_t 
 __BEGIN_DECLS
 
 #define HWVULKAN_HARDWARE_MODULE_ID "vulkan"
-#define HARDWARE_DEVICE_TAG 0
-#define HWVULKAN_DEVICE_API_VERSION_0_1 0
+#define HARDWARE_MODULE_TAG 'HWCT'
+#define HARDWARE_DEVICE_TAG 'HWDT'
+#define HARDWARE_HAL_API_VERSION 1
+#define HWVULKAN_MODULE_API_VERSION_0_1 1
+#define HWVULKAN_DEVICE_API_VERSION_0_1 1
 #define HWVULKAN_DEVICE_0 "vulkan0"
 
 typedef struct hw_device_t {
@@ -542,14 +544,13 @@ __END_DECLS
 
 #endif  // HARDWARE_HWVULKAN_H_
 ''')
-            logger.info(f"✓ Created hardware/hwvulkan.h stub")
+        logger.info(f"✓ Created hardware/hwvulkan.h stub")
         
         # 创建 vndk/hardware_buffer.h stub
         vndk_dir = engine_src / 'vndk'
         vndk_dir.mkdir(parents=True, exist_ok=True)
         hwbuffer_header = vndk_dir / 'hardware_buffer.h'
-        if not hwbuffer_header.exists():
-            hwbuffer_header.write_text('''// Stub header for Termux build
+        hwbuffer_header.write_text('''// Stub header for Termux build
 // Original is part of Android NDK VNDK
 
 #ifndef VNDK_HARDWARE_BUFFER_H_
@@ -650,7 +651,7 @@ __END_DECLS
 
 #endif  // VNDK_HARDWARE_BUFFER_H_
 ''')
-            logger.info(f"✓ Created vndk/hardware_buffer.h stub")
+        logger.info(f"✓ Created vndk/hardware_buffer.h stub")
 
     def patch(self, *, file, path):
         repo = git.Repo(path)
