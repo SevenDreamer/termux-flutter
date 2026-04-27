@@ -409,9 +409,9 @@ if (is_termux) {
                 logger.info("✓ linux/BUILD.gn already patched")
         
         # 创建 Android Vulkan 扩展 stub 头文件 (swiftshader 需要)
-        vulkan_dir = engine_src / 'third_party/vulkan-deps/vulkan-headers/src/include/vulkan'
-        vulkan_dir.mkdir(parents=True, exist_ok=True)
-        vk_android_header = vulkan_dir / 'vk_android_native_buffer.h'
+        swiftshader_vulkan_dir = engine_src / 'flutter/third_party/swiftshader/include/vulkan'
+        swiftshader_vulkan_dir.mkdir(parents=True, exist_ok=True)
+        vk_android_header = swiftshader_vulkan_dir / 'vk_android_native_buffer.h'
         if not vk_android_header.exists():
             vk_android_header.write_text('''// Stub header for Termux build
 // Original is part of Android NDK Vulkan extensions
