@@ -1,0 +1,142 @@
+name: build-flutter
+
+# 构建 Flutter SDK for Termux
+# Job 1: sync - 下载依赖并缓存
+# Job 2: build - 用缓存构建
+
+on:
+  workflow_dispatch:
+    inputs:
+      flutter_tag:
+        description: 'Flutter tag (without v prefix, e.g. 3.41.6)'
+        required: true
+        default: '3.41.6'
+        type: string
+      force_sync:
+        description: 'Force gclient sync (ignore cache)'
+        required: false
+        default: 'false'
+        type: boolean
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  # Job 1: 下载依赖
+  sync:
+    runs-on: ubuntu-latest
+    outputs:
+      cache-hit: ${{ steps.cache-check.outputs.cache-hit }}
+    
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4
+
+    - name: setup depot-tools
+      uses: newkdev/setup-depot-tools@v1.0.1
+
+    # 检查缓存是否存在
+    - name: check cache
+      id: cache-check
+      uses: actions/cache/restore@v4
+      with:
+        path: flutter
+        key: flutter-sync-${{ inputs.flutter_tag }}
+    
+    # 如果缓存存在且不强制 sync，跳过下载
+    - name: skip sync (cache exists)
+      if: steps.cache-check.outputs.cache-hit == 'true' && inputs.force_sync != 'true'
+      run: |
+        echo "✅ Cache found! Skipping gclient sync"
+        echo "=== Flutter directory ==="
+        ls -la flutter/
+        du -sh flutter/
+
+    # 如果缓存不存在或强制 sync，下载依赖
+    - name: clone flutter
+      if: steps.cache-check.outputs.cache-hit != 'true' || inputs.force_sync == 'true'
+      run: |
+        git clone --depth 1 --branch ${{ inputs.flutter_tag }} https://github.com/flutter/flutter flutter
+
+    - name: gclient sync
+      if: steps.cache-check.outputs.cache-hit != 'true' || inputs.force_sync == 'true'
+      run: |
+        cp .gclient flutter/.gclient
+        cd flutter
+        gclient sync -DR --no-history
+      timeout-minutes: 180
+
+    # 保存缓存（sync 完成后）
+    - name: save cache
+      if: steps.cache-check.outputs.cache-hit != 'true' || inputs.force_sync == 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: flutter
+        key: flutter-sync-${{ inputs.flutter_tag }}
+
+    # 显示结果
+    - name: show flutter structure
+      run: |
+        echo "=== Flutter structure ==="
+        ls -la flutter/
+        echo "=== Engine src ==="
+        ls flutter/engine/src/ 2>/dev/null | head -20
+        echo "=== Size ==="
+        du -sh flutter/
+
+  # Job 2: 构建（依赖 Job 1）
+  build:
+    needs: sync
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4
+
+    - name: setup depot-tools
+      uses: newkdev/setup-depot-tools@v1.0.1
+
+    - name: install python requirements
+      run: pip install -r requirements.txt
+
+    - name: install deps
+      run: sudo apt update && sudo apt install libfreetype-dev ninja-build -y
+
+    # 从缓存恢复 flutter 目录
+    - name: restore flutter cache
+      uses: actions/cache/restore@v4
+      with:
+        path: flutter
+        key: flutter-sync-${{ inputs.flutter_tag }}
+
+    - name: check flutter exists
+      run: |
+        if [ ! -d "flutter" ]; then
+          echo "❌ Flutter directory not found! This should not happen."
+          exit 1
+        fi
+        echo "✅ Flutter directory ready"
+        du -sh flutter/
+
+    - name: build
+      run: python build.py
+      timeout-minutes: 180
+
+    - name: list deb files
+      run: find . -name "*.deb" -exec ls -lh {} \;
+
+    - name: parse tag
+      id: parser
+      run: |
+        TAG=$(NO_RECORD=1 python build.py tag)
+        echo "TAG=$TAG" >> $GITHUB_OUTPUT
+
+    - name: release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.parser.outputs.TAG }}
+        name: Flutter ${{ steps.parser.outputs.TAG }}
+        files: '**/*.deb'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
