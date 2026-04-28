@@ -754,30 +754,15 @@ __END_DECLS
             logger.warning(f"VkDeviceMemoryExternalAndroid.hpp not found at {vk_device_memory_external_hpp}")
         
         # 添加缺失的 Android Vulkan 扩展结构体定义
-        # 放到 src/Vulkan/ 目录，和 VkPhysicalDevice.hpp 同级
+        # vk_android_native_buffer.h 已经有这些定义，这里创建一个简单的转发头文件
         vk_android_extensions_h = engine_src / 'flutter/third_party/swiftshader/src/Vulkan/vk_android_extensions.h'
         if not vk_android_extensions_h.exists():
-            vk_android_extensions_h.write_text('''// Android Vulkan Extensions for Termux
-// Provides missing types for swiftshader
-
+            vk_android_extensions_h.write_text('''// Forward to existing definitions
+// Android Vulkan extensions are defined in vk_android_native_buffer.h
 #ifndef VK_ANDROID_EXTENSIONS_H_
 #define VK_ANDROID_EXTENSIONS_H_
 
-#include "vulkan/vulkan_core.h"
-
-// VkPhysicalDevicePresentationPropertiesANDROID
-typedef struct VkPhysicalDevicePresentationPropertiesANDROID {
-    VkStructureType sType;
-    void* pNext;
-    VkBool32 sharedPresentableImageSupported;
-} VkPhysicalDevicePresentationPropertiesANDROID;
-
-// VkAndroidHardwareBufferUsageANDROID
-typedef struct VkAndroidHardwareBufferUsageANDROID {
-    VkStructureType sType;
-    void* pNext;
-    uint64_t androidHardwareBufferUsage;
-} VkAndroidHardwareBufferUsageANDROID;
+#include "vulkan/vk_android_native_buffer.h"
 
 #endif  // VK_ANDROID_EXTENSIONS_H_
 ''')
