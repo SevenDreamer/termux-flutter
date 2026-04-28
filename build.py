@@ -703,36 +703,36 @@ __END_DECLS
         if vk_device_memory_hpp.exists():
             content = vk_device_memory_hpp.read_text()
             import re
-            # 强制修复 exportAndroidHardwareBuffer 函数签名，确保与子类期望的一致
-            # 子类 VkDeviceMemoryExternalAndroid.hpp 期望: AHardwareBuffer **pAhb
-            if 'exportAndroidHardwareBuffer' in content:
-                # 替换任何现有的 exportAndroidHardwareBuffer 定义
-                # 使用 DOTALL 标志来匹配跨行的情况
+            # 检查是否已经有正确的签名
+            if 'exportAndroidHardwareBuffer(AHardwareBuffer **pAhb)' not in content:
+                # 先尝试替换任何现有的 exportAndroidHardwareBuffer 定义
                 pattern = r'virtual\s+VkResult\s+exportAndroidHardwareBuffer\s*\([^)]*\)\s*const[^;]*;'
                 replacement = 'virtual VkResult exportAndroidHardwareBuffer(AHardwareBuffer **pAhb) const;'
-                content = re.sub(pattern, replacement, content, flags=re.DOTALL)
-                vk_device_memory_hpp.write_text(content)
-                logger.info(f"✓ Fixed exportAndroidHardwareBuffer signature in VkDeviceMemory.hpp")
-            else:
-                # 在 virtual ~DeviceMemory() 后添加 exportAndroidHardwareBuffer 函数
-                # 注意：AHardwareBuffer 类型通过 vndk/hardware_buffer.h 的 typedef 定义，不需要前向声明
-                pattern = r'(virtual\s+~DeviceMemory\(\)\s*;)'
-                replacement = r'''\1
+                new_content = re.sub(pattern, replacement, content, flags=re.DOTALL)
+                
+                if new_content != content:
+                    # 替换成功
+                    content = new_content
+                    logger.info(f"✓ Fixed exportAndroidHardwareBuffer signature in VkDeviceMemory.hpp")
+                else:
+                    # 替换失败（正则没匹配），强制在析构函数后添加
+                    pattern = r'(virtual\s+~DeviceMemory\(\)\s*;)'
+                    replacement = r'''\1
 
     // Android Hardware Buffer export function (required by VkDeviceMemoryExternalAndroid)
     virtual VkResult exportAndroidHardwareBuffer(AHardwareBuffer **pAhb) const;'''
-                content = re.sub(pattern, replacement, content)
+                    content = re.sub(pattern, replacement, content)
+                    logger.info(f"✓ Added exportAndroidHardwareBuffer to VkDeviceMemory.hpp (no match found)")
                 
-                # 确保 VkDeviceMemory.hpp include 了 vndk/hardware_buffer.h
+                # 确保 include 了 vndk/hardware_buffer.h
                 if '#include "vndk/hardware_buffer.h"' not in content and '#include <vndk/hardware_buffer.h>' not in content:
-                    # 在第一个 #include 后添加
                     match = re.search(r'(#include\s+[<"][^>"]+[>"])', content)
                     if match:
                         content = content[:match.end()] + '\n#include "vndk/hardware_buffer.h"' + content[match.end():]
-                        logger.info(f"✓ Added #include vndk/hardware_buffer.h to VkDeviceMemory.hpp")
                 
                 vk_device_memory_hpp.write_text(content)
-                logger.info(f"✓ Added exportAndroidHardwareBuffer to VkDeviceMemory.hpp")
+            else:
+                logger.info(f"✓ VkDeviceMemory.hpp already has correct exportAndroidHardwareBuffer signature")
         else:
             logger.warning(f"VkDeviceMemory.hpp not found at {vk_device_memory_hpp}")
         
