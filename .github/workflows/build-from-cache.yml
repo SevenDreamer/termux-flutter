@@ -1,0 +1,92 @@
+name: build-from-cache
+
+# 使用 sync-engine workflow 下载的缓存来构建
+# 避免重复下载 engine 依赖
+
+on:
+  workflow_dispatch:
+    inputs:
+      flutter_tag:
+        description: 'Flutter tag (without v prefix, e.g. 3.41.6)'
+        required: true
+        default: '3.41.6'
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4
+
+    - name: download all caches
+      uses: actions/download-artifact@v4
+      with:
+        pattern: '*-${{ inputs.flutter_tag }}'
+        path: caches
+        merge-multiple: false
+
+    - name: extract caches
+      run: |
+        mkdir -p flutter
+        
+        ls -la caches/
+        
+        # 解压 flutter root
+        if [ -f "caches/flutter-root-${{ inputs.flutter_tag }}/flutter-root.tar.gz" ]; then
+          echo "Extracting flutter root..."
+          tar -xzf "caches/flutter-root-${{ inputs.flutter_tag }}/flutter-root.tar.gz"
+        fi
+        
+        # 解压 engine root
+        if [ -f "caches/engine-root-${{ inputs.flutter_tag }}/engine-root.tar.gz" ]; then
+          echo "Extracting engine root..."
+          tar -xzf "caches/engine-root-${{ inputs.flutter_tag }}/engine-root.tar.gz" -C flutter/
+        fi
+        
+        # 解压 engine third_party
+        if [ -f "caches/engine-third_party-${{ inputs.flutter_tag }}/engine-third_party.tar.gz" ]; then
+          echo "Extracting engine third_party..."
+          mkdir -p flutter/engine/src
+          tar -xzf "caches/engine-third_party-${{ inputs.flutter_tag }}/engine-third_party.tar.gz" -C flutter/engine/src/
+        fi
+        
+        # 检查目录结构
+        echo "Directory structure:"
+        ls -la flutter/
+        ls -la flutter/engine/
+        ls -la flutter/engine/src/
+        du -sh flutter/
+
+    - name: install deps
+      run: sudo apt update && sudo apt install libfreetype-dev ninja-build -y
+
+    - name: setup depot-tools
+      uses: newkdev/setup-depot-tools@v1.0.1
+
+    - name: install python requirements
+      run: pip install -r requirements.txt
+
+    - name: build
+      run: python build.py
+      timeout-minutes: 180
+
+    - name: parse tag
+      id: parser
+      run: |
+        TAG=$(NO_RECORD=1 python build.py tag)
+        echo "TAG=$TAG" >> $GITHUB_OUTPUT
+        echo "TITLE=Flutter $TAG" >> $GITHUB_OUTPUT
+
+    - name: list deb files
+      run: |
+        find . -name "*.deb" -exec ls -lh {} \;
+
+    - name: release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.parser.outputs.TAG }}
+        name: ${{ steps.parser.outputs.TITLE }}
+        files: '**/*.deb'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

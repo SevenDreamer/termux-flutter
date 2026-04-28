@@ -1,0 +1,112 @@
+name: sync-engine
+
+# 专门用于下载 Flutter engine 依赖
+# 成功后自动触发 build-from-cache workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      flutter_tag:
+        description: 'Flutter tag (without v prefix, e.g. 3.41.6)'
+        required: true
+        default: '3.41.6'
+        type: string
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4
+
+    - name: setup depot-tools
+      uses: newkdev/setup-depot-tools@v1.0.1
+
+    - name: install python requirements
+      run: pip install -r requirements.txt
+
+    - name: clone flutter
+      run: |
+        git clone --depth 1 --branch ${{ inputs.flutter_tag }} https://github.com/flutter/flutter flutter
+
+    - name: gclient sync
+      run: |
+        # 复制 .gclient 配置到 flutter 目录
+        cp .gclient flutter/.gclient
+        # 在 flutter 目录下运行 gclient sync
+        cd flutter
+        gclient sync -DR --no-history
+      timeout-minutes: 180  # 最多 3 小时
+
+    # 检查目录结构
+    - name: check directory structure
+      run: |
+        echo "=== flutter 目录结构 ==="
+        ls -la flutter/
+        echo "=== flutter/engine 目录结构 ==="
+        ls -la flutter/engine/ 2>/dev/null || echo "没有 engine 目录"
+        echo "=== flutter/engine/src 目录结构 ==="
+        ls -la flutter/engine/src/ 2>/dev/null || echo "没有 engine/src 目录"
+        echo "=== flutter/engine/src/third_party ==="
+        ls -la flutter/engine/src/third_party/ 2>/dev/null | head -20 || echo "没有 third_party 目录"
+
+    - name: create cache archives
+      run: |
+        cd flutter
+        
+        # 检查是否有 engine/src 目录
+        if [ -d "engine/src" ]; then
+          # 压缩 engine/src/third_party (最大的部分)
+          if [ -d "engine/src/third_party" ]; then
+            echo "Compressing engine/src/third_party..."
+            tar -czf ../engine-third_party.tar.gz engine/src/third_party/
+          else
+            echo "WARNING: engine/src/third_party not found"
+            touch ../engine-third_party.tar.gz
+          fi
+          
+          # 其他 engine 目录（排除 third_party）
+          echo "Compressing engine (excluding src/third_party)..."
+          tar --exclude='engine/src/third_party' -czf ../engine-root.tar.gz engine/
+        else
+          echo "WARNING: engine/src not found"
+          touch ../engine-third_party.tar.gz
+          touch ../engine-root.tar.gz
+        fi
+        
+        cd ..
+        
+        # flutter 根目录（不含 engine）
+        echo "Compressing flutter root (excluding engine)..."
+        tar --exclude='flutter/engine' -czf flutter-root.tar.gz flutter/
+        
+        # 显示文件大小
+        echo "=== Archive sizes ==="
+        ls -lh *.tar.gz
+
+    - name: upload engine third_party cache
+      uses: actions/upload-artifact@v4
+      with:
+        name: engine-third_party-${{ inputs.flutter_tag }}
+        path: engine-third_party.tar.gz
+        retention-days: 1
+
+    - name: upload engine root cache
+      uses: actions/upload-artifact@v4
+      with:
+        name: engine-root-${{ inputs.flutter_tag }}
+        path: engine-root.tar.gz
+        retention-days: 1
+
+    - name: upload flutter root cache
+      uses: actions/upload-artifact@v4
+      with:
+        name: flutter-root-${{ inputs.flutter_tag }}
+        path: flutter-root.tar.gz
+        retention-days: 1
+
+    - name: trigger build
+      uses: benc-uk/workflow-dispatch@v1
+      with:
+        workflow: build-from-cache.yml
+        inputs: '{"flutter_tag": "${{ inputs.flutter_tag }}"}'
