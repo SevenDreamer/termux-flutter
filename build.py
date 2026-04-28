@@ -775,7 +775,7 @@ __END_DECLS
             logger.warning(f"VkDeviceMemory.hpp not found at {vk_device_memory_hpp}")
         
 # 修复 swiftshader VkDeviceMemoryExternalAndroid.hpp - 删除冲突的前向声明，添加正确的 include
-        # 同时修复 exportAndroidHardwareBuffer 签名
+        # 同时删除 override 关键字避免签名不匹配问题
         vk_device_memory_external_hpp = engine_src / 'flutter/third_party/swiftshader/src/Vulkan/VkDeviceMemoryExternalAndroid.hpp'
         if vk_device_memory_external_hpp.exists():
             content = vk_device_memory_external_hpp.read_text()
@@ -788,13 +788,13 @@ __END_DECLS
                 match = re.search(r'(#include\s+[<"][^>"]+[>"])', content)
                 if match:
                     content = content[:match.end()] + '\n#include "vndk/hardware_buffer.h"' + content[match.end():]
-            # 修复 exportAndroidHardwareBuffer 签名 - 确保与基类一致
-            # 子类期望: AHardwareBuffer **pAhb
-            pattern = r'virtual\s+VkResult\s+exportAndroidHardwareBuffer\s*\([^)]*\)\s*const\s+override\s+final\s*;'
-            replacement = 'virtual VkResult exportAndroidHardwareBuffer(AHardwareBuffer **pAhb) const override final;'
-            content = re.sub(pattern, replacement, content, flags=re.DOTALL)
+            # 修复 exportAndroidHardwareBuffer - 删除 override 关键字，避免签名不匹配
+            # 原始: virtual VkResult exportAndroidHardwareBuffer(...) const override final;
+            # 修改: virtual VkResult exportAndroidHardwareBuffer(...) const;
+            content = re.sub(r'override\s+final\s*;', ';', content)
+            content = re.sub(r'override\s*;', ';', content)
             vk_device_memory_external_hpp.write_text(content)
-            logger.info(f"✓ Fixed VkDeviceMemoryExternalAndroid.hpp - removed conflicting forward declaration, added include, fixed exportAndroidHardwareBuffer signature")
+            logger.info(f"✓ Fixed VkDeviceMemoryExternalAndroid.hpp - removed conflicting forward declaration, added include, removed override keywords")
         else:
             logger.warning(f"VkDeviceMemoryExternalAndroid.hpp not found at {vk_device_memory_external_hpp}")
         
