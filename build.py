@@ -698,7 +698,7 @@ __END_DECLS
 ''')
         logger.info(f"✓ Created vndk/hardware_buffer.h stub")
         
-# 修复 swiftshader VkDeviceMemory.hpp - 确保 exportAndroidHardwareBuffer 签名正确
+        # 修复 swiftshader VkDeviceMemory.hpp - 确保 exportAndroidHardwareBuffer 签名正确
         vk_device_memory_hpp = engine_src / 'flutter/third_party/swiftshader/src/Vulkan/VkDeviceMemory.hpp'
         if vk_device_memory_hpp.exists():
             content = vk_device_memory_hpp.read_text()
@@ -774,7 +774,7 @@ __END_DECLS
         else:
             logger.warning(f"VkDeviceMemory.hpp not found at {vk_device_memory_hpp}")
         
-# 修复 swiftshader VkDeviceMemoryExternalAndroid.hpp - 删除冲突的前向声明，添加正确的 include
+        # 修复 swiftshader VkDeviceMemoryExternalAndroid.hpp - 删除冲突的前向声明，添加正确的 include
         # 同时删除 override 关键字避免签名不匹配问题
         vk_device_memory_external_hpp = engine_src / 'flutter/third_party/swiftshader/src/Vulkan/VkDeviceMemoryExternalAndroid.hpp'
         if vk_device_memory_external_hpp.exists():
