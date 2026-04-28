@@ -451,12 +451,9 @@ typedef struct VkNativeBufferANDROID {
     // Additional fields needed by swiftshader
     buffer_handle_t handle;
     int stride;
-    // nativeBufferInfo sub-struct fields (accessed as .nativeBufferInfo.format/usage)
-    struct {
-        buffer_handle_t handle;
-        int format;
-        int usage;
-    } nativeBufferInfo;
+    // Direct format/usage fields (accessed by swiftshader VkImage.cpp)
+    int format;
+    int usage;
 } VkNativeBufferANDROID;
 
 // Additional Android Vulkan extension types
@@ -540,18 +537,8 @@ static inline VkResult vkQueueSignalReleaseImageANDROID(VkQueue queue, uint32_t 
 #include <stdint.h>
 #include <sys/cdefs.h>
 
-// Forward declare Vulkan types and function pointers
-#define VKAPI_PTR
-
-typedef struct VkInstance_T* VkInstance;
-typedef struct VkPhysicalDevice_T* VkPhysicalDevice;
-typedef uint32_t VkFlags;
-typedef uint64_t VkFlags64;
-typedef VkFlags VkInstanceCreateInfoFlags;
-typedef enum VkResult { VK_SUCCESS = 0 } VkResult;
-typedef VkResult (VKAPI_PTR *PFN_vkEnumerateInstanceExtensionProperties)(const char*, uint32_t*, void*);
-typedef VkResult (VKAPI_PTR *PFN_vkCreateInstance)(const void*, const void*, VkInstance*);
-typedef void* (VKAPI_PTR *PFN_vkGetInstanceProcAddr)(VkInstance, const char*);
+// Include Vulkan core definitions instead of redefining
+#include "vulkan/vulkan_core.h"
 
 __BEGIN_DECLS
 
