@@ -727,6 +727,20 @@ __END_DECLS
                 logger.info(f"✓ Added exportAndroidHardwareBuffer to VkDeviceMemory.hpp")
         else:
             logger.warning(f"VkDeviceMemory.hpp not found at {vk_device_memory_hpp}")
+        
+        # 修复 swiftshader VkDeviceMemoryExternalAndroid.hpp - 添加 AHardwareBuffer 前向声明
+        vk_device_memory_external_hpp = engine_src / 'flutter/third_party/swiftshader/src/Vulkan/VkDeviceMemoryExternalAndroid.hpp'
+        if vk_device_memory_external_hpp.exists():
+            content = vk_device_memory_external_hpp.read_text()
+            # 添加 AHardwareBuffer 前向声明（如果不存在）
+            if 'struct AHardwareBuffer' not in content and '#include <android/hardware_buffer.h>' not in content:
+                # 在文件开头添加前向声明
+                content = 'struct AHardwareBuffer;\n\n' + content
+                vk_device_memory_external_hpp.write_text(content)
+                logger.info(f"✓ Added AHardwareBuffer forward declaration to VkDeviceMemoryExternalAndroid.hpp")
+        else:
+            logger.warning(f"VkDeviceMemoryExternalAndroid.hpp not found at {vk_device_memory_external_hpp}")
+
 
     def patch(self, *, file, path):
         repo = git.Repo(path)
