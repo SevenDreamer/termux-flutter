@@ -713,33 +713,86 @@ __END_DECLS
                 vk_device_memory_hpp.write_text(content)
                 logger.info(f"✓ Fixed exportAndroidHardwareBuffer signature in VkDeviceMemory.hpp")
             else:
-                # 添加 AHardwareBuffer 前向声明
-                if 'struct AHardwareBuffer' not in content and 'AHardwareBuffer' not in content.split('#include')[0]:
-                    content = 'struct AHardwareBuffer;\n' + content
-                # 在 virtual ~DeviceMemory() 后添加
+                # 在 virtual ~DeviceMemory() 后添加 exportAndroidHardwareBuffer 函数
+                # 注意：AHardwareBuffer 类型通过 vndk/hardware_buffer.h 的 typedef 定义，不需要前向声明
                 pattern = r'(virtual\s+~DeviceMemory\(\)\s*;)'
                 replacement = r'''\1
 
     // Android Hardware Buffer export function (required by VkDeviceMemoryExternalAndroid)
     virtual VkResult exportAndroidHardwareBuffer(AHardwareBuffer **pAhb) const;'''
                 content = re.sub(pattern, replacement, content)
+                
+                # 确保 VkDeviceMemory.hpp include 了 vndk/hardware_buffer.h
+                if '#include "vndk/hardware_buffer.h"' not in content and '#include <vndk/hardware_buffer.h>' not in content:
+                    # 在第一个 #include 后添加
+                    match = re.search(r'(#include\s+[<"][^>"]+[>"])', content)
+                    if match:
+                        content = content[:match.end()] + '\n#include "vndk/hardware_buffer.h"' + content[match.end():]
+                        logger.info(f"✓ Added #include vndk/hardware_buffer.h to VkDeviceMemory.hpp")
+                
                 vk_device_memory_hpp.write_text(content)
                 logger.info(f"✓ Added exportAndroidHardwareBuffer to VkDeviceMemory.hpp")
         else:
             logger.warning(f"VkDeviceMemory.hpp not found at {vk_device_memory_hpp}")
         
-        # 修复 swiftshader VkDeviceMemoryExternalAndroid.hpp - 添加 AHardwareBuffer 前向声明
+# 修复 swiftshader VkDeviceMemoryExternalAndroid.hpp - 删除冲突的前向声明，添加正确的 include
         vk_device_memory_external_hpp = engine_src / 'flutter/third_party/swiftshader/src/Vulkan/VkDeviceMemoryExternalAndroid.hpp'
         if vk_device_memory_external_hpp.exists():
             content = vk_device_memory_external_hpp.read_text()
-            # 添加 AHardwareBuffer 前向声明（如果不存在）
-            if 'struct AHardwareBuffer' not in content and '#include <android/hardware_buffer.h>' not in content:
-                # 在文件开头添加前向声明
-                content = 'struct AHardwareBuffer;\n\n' + content
-                vk_device_memory_external_hpp.write_text(content)
-                logger.info(f"✓ Added AHardwareBuffer forward declaration to VkDeviceMemoryExternalAndroid.hpp")
+            import re
+            # 删除第一行的 "struct AHardwareBuffer;" 前向声明（与 typedef 冲突）
+            content = re.sub(r'^struct\s+AHardwareBuffer;\s*\n', '', content)
+            # 添加 include vndk/hardware_buffer.h（如果不存在）
+            if '#include "vndk/hardware_buffer.h"' not in content and '#include <vndk/hardware_buffer.h>' not in content:
+                # 在第一个 #include 后添加
+                match = re.search(r'(#include\s+[<"][^>"]+[>"])', content)
+                if match:
+                    content = content[:match.end()] + '\n#include "vndk/hardware_buffer.h"' + content[match.end():]
+            vk_device_memory_external_hpp.write_text(content)
+            logger.info(f"✓ Fixed VkDeviceMemoryExternalAndroid.hpp - removed conflicting forward declaration, added include")
         else:
             logger.warning(f"VkDeviceMemoryExternalAndroid.hpp not found at {vk_device_memory_external_hpp}")
+        
+        # 添加缺失的 Android Vulkan 扩展结构体定义
+        vk_android_extensions_h = swiftshader_vulkan_dir / 'vk_android_extensions.h'
+        if not vk_android_extensions_h.exists():
+            vk_android_extensions_h.write_text('''// Android Vulkan Extensions for Termux
+// Provides missing types for swiftshader
+
+#ifndef VK_ANDROID_EXTENSIONS_H_
+#define VK_ANDROID_EXTENSIONS_H_
+
+#include "vulkan/vulkan_core.h"
+
+// VkPhysicalDevicePresentationPropertiesANDROID
+typedef struct VkPhysicalDevicePresentationPropertiesANDROID {
+    VkStructureType sType;
+    void* pNext;
+    VkBool32 sharedPresentableImageSupported;
+} VkPhysicalDevicePresentationPropertiesANDROID;
+
+// VkAndroidHardwareBufferUsageANDROID
+typedef struct VkAndroidHardwareBufferUsageANDROID {
+    VkStructureType sType;
+    void* pNext;
+    uint64_t androidHardwareBufferUsage;
+} VkAndroidHardwareBufferUsageANDROID;
+
+#endif  // VK_ANDROID_EXTENSIONS_H_
+''')
+            logger.info(f"✓ Created vk_android_extensions.h")
+        
+        # 确保 VkPhysicalDevice.hpp include 了 vk_android_extensions.h
+        vk_physical_device_hpp = engine_src / 'flutter/third_party/swiftshader/src/Vulkan/VkPhysicalDevice.hpp'
+        if vk_physical_device_hpp.exists():
+            content = vk_physical_device_hpp.read_text()
+            if '#include "vk_android_extensions.h"' not in content:
+                # 在第一个 #include 后添加
+                match = re.search(r'(#include\s+[<"][^>"]+[>"])', content)
+                if match:
+                    content = content[:match.end()] + '\n#include "vk_android_extensions.h"' + content[match.end():]
+                    vk_physical_device_hpp.write_text(content)
+                    logger.info(f"✓ Added #include vk_android_extensions.h to VkPhysicalDevice.hpp")
 
 
     def patch(self, *, file, path):
