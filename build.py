@@ -697,6 +697,36 @@ __END_DECLS
 #endif  // VNDK_HARDWARE_BUFFER_H_
 ''')
         logger.info(f"✓ Created vndk/hardware_buffer.h stub")
+        
+        # 修复 swiftshader VkDeviceMemory.hpp - 添加缺失的 exportAndroidHardwareBuffer 虚函数
+        vk_device_memory_hpp = engine_src / 'flutter/third_party/swiftshader/src/Vulkan/VkDeviceMemory.hpp'
+        if vk_device_memory_hpp.exists():
+            content = vk_device_memory_hpp.read_text()
+            # 检查是否已经有这个虚函数
+            if 'exportAndroidHardwareBuffer' not in content:
+                # 添加 AHardwareBuffer 前向声明
+                content = '#ifndef VK_ENABLE_BETA_EXTENSIONS\n#define VK_ENABLE_BETA_EXTENSIONS\n#endif\n' + content
+                # 在文件开头添加 AHardwareBuffer 前向声明
+                if 'struct AHardwareBuffer' not in content:
+                    content = 'struct AHardwareBuffer;\n' + content
+                # 找到 ~DeviceMemory 析构函数后添加虚函数声明
+                import re
+                # 在 virtual ~DeviceMemory() 后添加
+                pattern = r'(virtual\s+~DeviceMemory\(\)\s*;)'
+                replacement = r'''\1
+
+    // Android Hardware Buffer export function (required by VkDeviceMemoryExternalAndroid)
+    virtual VkResult exportAndroidHardwareBuffer(AHardwareBuffer **pAhb) const { 
+        (void)pAhb; 
+        return VK_ERROR_OUT_OF_DEVICE_MEMORY; 
+    }'''
+                content = re.sub(pattern, replacement, content)
+                vk_device_memory_hpp.write_text(content)
+                logger.info(f"✓ Patched VkDeviceMemory.hpp with exportAndroidHardwareBuffer")
+            else:
+                logger.info(f"✓ VkDeviceMemory.hpp already has exportAndroidHardwareBuffer")
+        else:
+            logger.warning(f"VkDeviceMemory.hpp not found at {vk_device_memory_hpp}")
 
     def patch(self, *, file, path):
         repo = git.Repo(path)
