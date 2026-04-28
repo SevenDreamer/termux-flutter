@@ -698,33 +698,33 @@ __END_DECLS
 ''')
         logger.info(f"✓ Created vndk/hardware_buffer.h stub")
         
-        # 修复 swiftshader VkDeviceMemory.hpp - 添加缺失的 exportAndroidHardwareBuffer 虚函数
+        # 修复 swiftshader VkDeviceMemory.hpp - 确保 exportAndroidHardwareBuffer 签名正确
         vk_device_memory_hpp = engine_src / 'flutter/third_party/swiftshader/src/Vulkan/VkDeviceMemory.hpp'
         if vk_device_memory_hpp.exists():
             content = vk_device_memory_hpp.read_text()
-            # 检查是否已经有这个虚函数
-            if 'exportAndroidHardwareBuffer' not in content:
+            import re
+            # 强制修复 exportAndroidHardwareBuffer 函数签名，确保与子类期望的一致
+            # 子类 VkDeviceMemoryExternalAndroid.hpp 期望: AHardwareBuffer **pAhb
+            if 'exportAndroidHardwareBuffer' in content:
+                # 替换任何现有的 exportAndroidHardwareBuffer 定义
+                pattern = r'virtual\s+VkResult\s+exportAndroidHardwareBuffer\s*\([^)]*\)\s*const[^;]*;'
+                replacement = 'virtual VkResult exportAndroidHardwareBuffer(AHardwareBuffer **pAhb) const;'
+                content = re.sub(pattern, replacement, content)
+                vk_device_memory_hpp.write_text(content)
+                logger.info(f"✓ Fixed exportAndroidHardwareBuffer signature in VkDeviceMemory.hpp")
+            else:
                 # 添加 AHardwareBuffer 前向声明
-                content = '#ifndef VK_ENABLE_BETA_EXTENSIONS\n#define VK_ENABLE_BETA_EXTENSIONS\n#endif\n' + content
-                # 在文件开头添加 AHardwareBuffer 前向声明
-                if 'struct AHardwareBuffer' not in content:
+                if 'struct AHardwareBuffer' not in content and 'AHardwareBuffer' not in content.split('#include')[0]:
                     content = 'struct AHardwareBuffer;\n' + content
-                # 找到 ~DeviceMemory 析构函数后添加虚函数声明
-                import re
                 # 在 virtual ~DeviceMemory() 后添加
                 pattern = r'(virtual\s+~DeviceMemory\(\)\s*;)'
                 replacement = r'''\1
 
     // Android Hardware Buffer export function (required by VkDeviceMemoryExternalAndroid)
-    virtual VkResult exportAndroidHardwareBuffer(AHardwareBuffer **pAhb) const { 
-        (void)pAhb; 
-        return VK_ERROR_OUT_OF_DEVICE_MEMORY; 
-    }'''
+    virtual VkResult exportAndroidHardwareBuffer(AHardwareBuffer **pAhb) const;'''
                 content = re.sub(pattern, replacement, content)
                 vk_device_memory_hpp.write_text(content)
-                logger.info(f"✓ Patched VkDeviceMemory.hpp with exportAndroidHardwareBuffer")
-            else:
-                logger.info(f"✓ VkDeviceMemory.hpp already has exportAndroidHardwareBuffer")
+                logger.info(f"✓ Added exportAndroidHardwareBuffer to VkDeviceMemory.hpp")
         else:
             logger.warning(f"VkDeviceMemory.hpp not found at {vk_device_memory_hpp}")
 
