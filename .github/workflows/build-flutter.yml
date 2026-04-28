@@ -2,7 +2,8 @@ name: build-flutter
 
 # 构建 Flutter SDK for Termux
 # Job 1: sync - 下载依赖并缓存
-# Job 2: build - 用缓存构建
+# Job 2: prepare - 准备构建环境
+# Job 3: build - 编译并发布
 
 on:
   workflow_dispatch:
@@ -85,8 +86,8 @@ jobs:
         echo "=== Size ==="
         du -sh flutter/
 
-  # Job 2: 构建（依赖 Job 1）
-  build:
+  # Job 2: 准备构建环境
+  prepare:
     needs: sync
     runs-on: ubuntu-latest
     
@@ -118,6 +119,31 @@ jobs:
         fi
         echo "✅ Flutter directory ready"
         du -sh flutter/
+
+  # Job 3: 构建
+  build:
+    needs: [sync, prepare]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4
+
+    - name: setup depot-tools
+      uses: newkdev/setup-depot-tools@v1.0.1
+
+    - name: install python requirements
+      run: pip install -r requirements.txt
+
+    - name: install deps
+      run: sudo apt update && sudo apt install libfreetype-dev ninja-build -y
+
+    # 从缓存恢复 flutter 目录
+    - name: restore flutter cache
+      uses: actions/cache/restore@v4
+      with:
+        path: flutter
+        key: flutter-sync-${{ inputs.flutter_tag }}
 
     - name: build
       run: python build.py

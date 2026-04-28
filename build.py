@@ -698,7 +698,7 @@ __END_DECLS
 ''')
         logger.info(f"✓ Created vndk/hardware_buffer.h stub")
         
-        # 修复 swiftshader VkDeviceMemory.hpp - 确保 exportAndroidHardwareBuffer 签名正确
+# 修复 swiftshader VkDeviceMemory.hpp - 确保 exportAndroidHardwareBuffer 签名正确
         vk_device_memory_hpp = engine_src / 'flutter/third_party/swiftshader/src/Vulkan/VkDeviceMemory.hpp'
         if vk_device_memory_hpp.exists():
             content = vk_device_memory_hpp.read_text()
@@ -715,14 +715,52 @@ __END_DECLS
                     content = new_content
                     logger.info(f"✓ Fixed exportAndroidHardwareBuffer signature in VkDeviceMemory.hpp")
                 else:
-                    # 替换失败（正则没匹配），强制在析构函数后添加
-                    pattern = r'(virtual\s+~DeviceMemory\(\)\s*;)'
-                    replacement = r'''\1
+                    # 替换失败，尝试多种方式添加
+                    # 方式1: 在析构函数后添加
+                    patterns_to_try = [
+                        r'(virtual\s+~DeviceMemory\s*\([^)]*\)\s*;)',
+                        r'(virtual\s+~DeviceMemory\s*\([^)]*\)\s*[^;]*;)',
+                        r'(~DeviceMemory\s*\([^)]*\))',
+                        r'(class\s+DeviceMemory[^{]*\{)',  # 在类定义开头后添加
+                    ]
+                    added = False
+                    for pattern in patterns_to_try:
+                        match = re.search(pattern, content)
+                        if match:
+                            # 找到匹配位置，在后面添加
+                            insertion = '''
 
     // Android Hardware Buffer export function (required by VkDeviceMemoryExternalAndroid)
-    virtual VkResult exportAndroidHardwareBuffer(AHardwareBuffer **pAhb) const;'''
-                    content = re.sub(pattern, replacement, content)
-                    logger.info(f"✓ Added exportAndroidHardwareBuffer to VkDeviceMemory.hpp (no match found)")
+    virtual VkResult exportAndroidHardwareBuffer(AHardwareBuffer **pAhb) const { return VK_ERROR_OUT_OF_DEVICE_MEMORY; }
+'''
+                            # 如果是类定义开头，需要在第一个 protected/private/public 后添加
+                            if 'class DeviceMemory' in pattern:
+                                # 找到第一个 public/protected
+                                pub_match = re.search(r'(public\s*:)', content[match.end():])
+                                if pub_match:
+                                    insert_pos = match.end() + pub_match.end()
+                                else:
+                                    insert_pos = match.end()
+                            else:
+                                insert_pos = match.end()
+                            
+                            content = content[:insert_pos] + insertion + content[insert_pos:]
+                            added = True
+                            logger.info(f"✓ Added exportAndroidHardwareBuffer to VkDeviceMemory.hpp after pattern: {pattern}")
+                            break
+                    
+                    if not added:
+                        # 最后手段：在文件末尾的类定义闭合括号前添加
+                        # 找最后一个 }; 
+                        last_brace = content.rfind('};')
+                        if last_brace > 0:
+                            insertion = '''
+
+    // Android Hardware Buffer export function (required by VkDeviceMemoryExternalAndroid)
+    virtual VkResult exportAndroidHardwareBuffer(AHardwareBuffer **pAhb) const { return VK_ERROR_OUT_OF_DEVICE_MEMORY; }
+'''
+                            content = content[:last_brace] + insertion + content[last_brace:]
+                            logger.info(f"✓ Added exportAndroidHardwareBuffer to VkDeviceMemory.hpp before closing brace")
                 
                 # 确保 include 了 vndk/hardware_buffer.h
                 if '#include "vndk/hardware_buffer.h"' not in content and '#include <vndk/hardware_buffer.h>' not in content:
