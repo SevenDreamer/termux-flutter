@@ -460,7 +460,7 @@ typedef struct VkNativeBufferANDROID {
 typedef struct VkPhysicalDevicePresentationPropertiesANDROID {
     VkStructureType sType;
     void* pNext;
-    VkBool32 supportsImageSharing;
+    VkBool32 sharedImage;  // swiftshader uses 'sharedImage', not 'supportsImageSharing'
 } VkPhysicalDevicePresentationPropertiesANDROID;
 
 typedef struct VkAndroidHardwareBufferUsageANDROID {
@@ -707,9 +707,10 @@ __END_DECLS
             # 子类 VkDeviceMemoryExternalAndroid.hpp 期望: AHardwareBuffer **pAhb
             if 'exportAndroidHardwareBuffer' in content:
                 # 替换任何现有的 exportAndroidHardwareBuffer 定义
+                # 使用 DOTALL 标志来匹配跨行的情况
                 pattern = r'virtual\s+VkResult\s+exportAndroidHardwareBuffer\s*\([^)]*\)\s*const[^;]*;'
                 replacement = 'virtual VkResult exportAndroidHardwareBuffer(AHardwareBuffer **pAhb) const;'
-                content = re.sub(pattern, replacement, content)
+                content = re.sub(pattern, replacement, content, flags=re.DOTALL)
                 vk_device_memory_hpp.write_text(content)
                 logger.info(f"✓ Fixed exportAndroidHardwareBuffer signature in VkDeviceMemory.hpp")
             else:
@@ -736,6 +737,7 @@ __END_DECLS
             logger.warning(f"VkDeviceMemory.hpp not found at {vk_device_memory_hpp}")
         
 # 修复 swiftshader VkDeviceMemoryExternalAndroid.hpp - 删除冲突的前向声明，添加正确的 include
+        # 同时修复 exportAndroidHardwareBuffer 签名
         vk_device_memory_external_hpp = engine_src / 'flutter/third_party/swiftshader/src/Vulkan/VkDeviceMemoryExternalAndroid.hpp'
         if vk_device_memory_external_hpp.exists():
             content = vk_device_memory_external_hpp.read_text()
@@ -748,8 +750,13 @@ __END_DECLS
                 match = re.search(r'(#include\s+[<"][^>"]+[>"])', content)
                 if match:
                     content = content[:match.end()] + '\n#include "vndk/hardware_buffer.h"' + content[match.end():]
+            # 修复 exportAndroidHardwareBuffer 签名 - 确保与基类一致
+            # 子类期望: AHardwareBuffer **pAhb
+            pattern = r'virtual\s+VkResult\s+exportAndroidHardwareBuffer\s*\([^)]*\)\s*const\s+override\s+final\s*;'
+            replacement = 'virtual VkResult exportAndroidHardwareBuffer(AHardwareBuffer **pAhb) const override final;'
+            content = re.sub(pattern, replacement, content, flags=re.DOTALL)
             vk_device_memory_external_hpp.write_text(content)
-            logger.info(f"✓ Fixed VkDeviceMemoryExternalAndroid.hpp - removed conflicting forward declaration, added include")
+            logger.info(f"✓ Fixed VkDeviceMemoryExternalAndroid.hpp - removed conflicting forward declaration, added include, fixed exportAndroidHardwareBuffer signature")
         else:
             logger.warning(f"VkDeviceMemoryExternalAndroid.hpp not found at {vk_device_memory_external_hpp}")
         
