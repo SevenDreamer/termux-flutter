@@ -727,6 +727,36 @@ __END_DECLS
 ''')
         logger.info(f"✓ Created hardware/gralloc1.h stub")
         
+        # 创建 sync/sync.h stub (swiftshader 需要)
+        sync_dir = engine_src / 'sync'
+        sync_dir.mkdir(parents=True, exist_ok=True)
+        sync_header = sync_dir / 'sync.h'
+        sync_header.write_text('''// Stub header for Termux build
+// Original is part of Android NDK sync headers
+
+#ifndef SYNC_SYNC_H_
+#define SYNC_SYNC_H_
+
+#include <stdint.h>
+#include <sys/cdefs.h>
+#include <time.h>
+
+__BEGIN_DECLS
+
+// sync merge flags
+#define SYNC_MERGE_FLAG_ALL 0
+
+// Stub implementations - swiftshader doesn't actually use these at runtime
+static inline int sync_wait(int fd, int timeout_ms) { return 0; }
+static inline int sync_merge(const char* name, int fd1, int fd2) { return -1; }
+static inline int32_t sync_get_fence_info(int fd) { return 0; }
+static inline void sync_fence_info_free(int32_t info) {}
+
+__END_DECLS
+
+#endif  // SYNC_SYNC_H_
+''')
+        logger.info(f"✓ Created sync/sync.h stub")
         
         # 创建 vndk/hardware_buffer.h stub
         vndk_dir = engine_src / 'vndk'
