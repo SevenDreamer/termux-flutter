@@ -880,6 +880,8 @@ __END_DECLS
             '--gn-args', f'is_termux_host={utils.__TERMUX__}',
             '--gn-args', f'termux_api_level={api}',
             '--gn-args', 'custom_target_triple="aarch64-linux-android"',
+            # Enable ccache for faster incremental builds
+            '--gn-args', 'cc_wrapper="ccache"',
         ]
         subprocess.run(cmd, cwd=root, check=True, stdout=True, stderr=True)
 

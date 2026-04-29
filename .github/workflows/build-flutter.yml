@@ -102,7 +102,17 @@ jobs:
       run: pip install -r requirements.txt
 
     - name: install deps
-      run: sudo apt update && sudo apt install libfreetype-dev ninja-build -y
+      run: sudo apt update && sudo apt install libfreetype-dev ninja-build ccache -y
+
+    # Setup ccache for faster incremental builds
+    - name: Setup ccache
+      uses: hendrikmuhs/ccache-action@v1
+      with:
+        key: ${{ inputs.flutter_tag }}
+        max-size: 5G
+        restore-keys: |
+          flutter-build-${{ inputs.flutter_tag }}
+          flutter-build-
 
     # 从缓存恢复 flutter 目录
     - name: restore flutter cache
@@ -136,7 +146,17 @@ jobs:
       run: pip install -r requirements.txt
 
     - name: install deps
-      run: sudo apt update && sudo apt install libfreetype-dev ninja-build -y
+      run: sudo apt update && sudo apt install libfreetype-dev ninja-build ccache -y
+
+    # Setup ccache for faster incremental builds
+    - name: Setup ccache
+      uses: hendrikmuhs/ccache-action@v1
+      with:
+        key: ${{ inputs.flutter_tag }}
+        max-size: 5G
+        restore-keys: |
+          flutter-build-${{ inputs.flutter_tag }}
+          flutter-build-
 
     # 从缓存恢复 flutter 目录
     - name: restore flutter cache
