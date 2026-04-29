@@ -633,8 +633,10 @@ __BEGIN_DECLS
 #define HAL_PIXEL_FORMAT_RGB_888 3
 #define HAL_PIXEL_FORMAT_RGB_565 4
 #define HAL_PIXEL_FORMAT_BGRA_8888 5
-#define HAL_PIXEL_FORMAT_RGBA_5551 6
-#define HAL_PIXEL_FORMAT_RGBA_4444 7
+
+// Forward declare hw_module_t/hw_device_t (defined in hardware/hardware.h)
+struct hw_module_t;
+struct hw_device_t;
 
 typedef struct android_native_base_t {
     int magic;
@@ -656,9 +658,8 @@ typedef struct ANativeWindowBuffer {
     void* reserved_proc[8];
 } ANativeWindowBuffer_t;
 
-// Minimal gralloc module structure
 typedef struct gralloc_module_t {
-    struct hw_module_t common;
+    struct hw_module_t const* common;
     int (*registerBuffer)(struct gralloc_module_t const* module, void* handle);
     int (*unregisterBuffer)(struct gralloc_module_t const* module, void* handle);
     int (*lock)(struct gralloc_module_t const* module, void* handle, int usage, int l, int t, int w, int h, void** vaddr);
@@ -668,7 +669,7 @@ typedef struct gralloc_module_t {
 } gralloc_module_t;
 
 typedef struct alloc_device_t {
-    struct hw_device_t common;
+    struct hw_device_t const* common;
     int (*alloc)(struct alloc_device_t* dev, int w, int h, int format, int usage, void** handle, int* stride);
     int (*free)(struct alloc_device_t* dev, void* handle);
     void* reserved_proc[7];
@@ -679,6 +680,53 @@ __END_DECLS
 #endif  // HARDWARE_GRALLOC_H_
 ''')
         logger.info(f"✓ Created hardware/gralloc.h stub")
+        
+        # 创建 hardware/gralloc1.h stub (swiftshader 需要)
+        gralloc1_header = hardware_dir / 'gralloc1.h'
+        gralloc1_header.write_text('''// Stub header for Termux build
+// Original is part of Android NDK hardware headers
+
+#ifndef HARDWARE_GRALLOC1_H_
+#define HARDWARE_GRALLOC1_H_
+
+#include <stdint.h>
+#include <sys/cdefs.h>
+
+__BEGIN_DECLS
+
+#define GRALLOC1_HARDWARE_MODULE_ID "gralloc1"
+
+// Gralloc1 error codes
+typedef enum {
+    GRALLOC1_ERROR_NONE = 0,
+    GRALLOC1_ERROR_BAD_HANDLE = 1,
+    GRALLOC1_ERROR_BAD_VALUE = 2,
+    GRALLOC1_ERROR_NO_RESOURCES = 5,
+    GRALLOC1_ERROR_UNSUPPORTED = 6,
+} gralloc1_error_t;
+
+// Producer/consumer usage
+typedef uint64_t gralloc1_producer_usage_t;
+typedef uint64_t gralloc1_consumer_usage_t;
+
+#define GRALLOC1_PRODUCER_USAGE_NONE 0
+#define GRALLOC1_CONSUMER_USAGE_NONE 0
+
+// Minimal gralloc1 device structure
+struct hw_device_t;
+
+typedef struct gralloc1_device {
+    struct hw_device_t const* common;
+    void (*getCapabilities)(struct gralloc1_device* device, uint32_t* outCount, int32_t* outCapabilities);
+    void* reserved[15];
+} gralloc1_device_t;
+
+__END_DECLS
+
+#endif  // HARDWARE_GRALLOC1_H_
+''')
+        logger.info(f"✓ Created hardware/gralloc1.h stub")
+        
         
         # 创建 vndk/hardware_buffer.h stub
         vndk_dir = engine_src / 'vndk'
