@@ -788,13 +788,21 @@ __END_DECLS
                 match = re.search(r'(#include\s+[<"][^>"]+[>"])', content)
                 if match:
                     content = content[:match.end()] + '\n#include "vndk/hardware_buffer.h"' + content[match.end():]
-            # 修复 exportAndroidHardwareBuffer - 删除 override 关键字，避免签名不匹配
+            # 修复 exportAndroidHardwareBuffer - 只删除 override final 组合，保留普通 override
             # 原始: virtual VkResult exportAndroidHardwareBuffer(...) const override final;
             # 修改: virtual VkResult exportAndroidHardwareBuffer(...) const;
+            # 注意：不能删除普通 override，否则其他方法会报 -Winconsistent-missing-override 错误
             content = re.sub(r'override\s+final\s*;', ';', content)
-            content = re.sub(r'override\s*;', ';', content)
+            
+            # 给缺少 override 的方法添加 override 关键字
+            # 这些方法重写了基类的虚函数，但声明时没写 override
+            content = re.sub(r'(VkResult\s+allocateBuffer\s*\(\s*\))\s*;', r'\1 override;', content)
+            content = re.sub(r'(void\s+freeBuffer\s*\(\s*\))\s*;', r'\1 override;', content)
+            content = re.sub(r'(int\s+externalImageRowPitchBytes\s*\([^)]*\)\s*const)\s*;', r'\1 override;', content)
+            content = re.sub(r'(VkDeviceSize\s+externalImageMemoryOffset\s*\([^)]*\)\s*const)\s*;', r'\1 override;', content)
+            
             vk_device_memory_external_hpp.write_text(content)
-            logger.info(f"✓ Fixed VkDeviceMemoryExternalAndroid.hpp - removed conflicting forward declaration, added include, removed override keywords")
+            logger.info(f"✓ Fixed VkDeviceMemoryExternalAndroid.hpp - removed conflicting forward declaration, added include, fixed override keywords")
         else:
             logger.warning(f"VkDeviceMemoryExternalAndroid.hpp not found at {vk_device_memory_external_hpp}")
         
