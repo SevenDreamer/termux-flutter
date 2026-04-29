@@ -496,6 +496,12 @@ typedef struct VkExternalFormatANDROID {
     uint64_t externalFormat;
 } VkExternalFormatANDROID;
 
+typedef struct VkSwapchainImageCreateInfoANDROID {
+    VkStructureType sType;
+    void* pNext;
+    VkSwapchainImageUsageFlagsANDROID usage;
+} VkSwapchainImageCreateInfoANDROID;
+
 #define VK_STRUCTURE_TYPE_NATIVE_BUFFER_ANDROID 1000000006
 #define VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENTATION_PROPERTIES_ANDROID 1000000007
 #define VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_USAGE_ANDROID 1000000008
@@ -503,6 +509,10 @@ typedef struct VkExternalFormatANDROID {
 #define VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_PROPERTIES_ANDROID 1000129001
 #define VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_FORMAT_PROPERTIES_ANDROID 1000129002
 #define VK_STRUCTURE_TYPE_EXTERNAL_FORMAT_ANDROID 1000129004
+
+// Vulkan extension name and version (required by swiftshader)
+#define VK_ANDROID_NATIVE_BUFFER_EXTENSION_NAME "VK_ANDROID_native_buffer"
+#define VK_ANDROID_NATIVE_BUFFER_SPEC_VERSION 7
 
 // Android Vulkan extension function stubs
 typedef VkResult (VKAPI_PTR *PFN_vkGetSwapchainGrallocUsageANDROID)(VkDevice device, VkFormat format, VkImageUsageFlags imageUsage, int* grallocUsage);
