@@ -591,6 +591,95 @@ __END_DECLS
 ''')
         logger.info(f"✓ Created hardware/hwvulkan.h stub")
         
+        # 创建 hardware/gralloc.h stub (swiftshader 需要)
+        gralloc_header = hardware_dir / 'gralloc.h'
+        gralloc_header.write_text('''// Stub header for Termux build
+// Original is part of Android NDK hardware headers
+
+#ifndef HARDWARE_GRALLOC_H_
+#define HARDWARE_GRALLOC_H_
+
+#include <stdint.h>
+#include <sys/cdefs.h>
+
+__BEGIN_DECLS
+
+#define GRALLOC_HARDWARE_MODULE_ID "gralloc"
+#define GRALLOC_HARDWARE_GPU0 "gpu0"
+
+// Buffer usage flags
+#define GRALLOC_USAGE_SW_READ_NEVER 0x00000000
+#define GRALLOC_USAGE_SW_READ_RARELY 0x00000002
+#define GRALLOC_USAGE_SW_READ_OFTEN 0x00000003
+#define GRALLOC_USAGE_SW_READ_MASK 0x0000000F
+#define GRALLOC_USAGE_SW_WRITE_NEVER 0x00000000
+#define GRALLOC_USAGE_SW_WRITE_RARELY 0x00000020
+#define GRALLOC_USAGE_SW_WRITE_OFTEN 0x00000030
+#define GRALLOC_USAGE_SW_WRITE_MASK 0x000000F0
+#define GRALLOC_USAGE_HW_TEXTURE 0x00000100
+#define GRALLOC_USAGE_HW_RENDER 0x00000200
+#define GRALLOC_USAGE_HW_2D 0x00000400
+#define GRALLOC_USAGE_HW_COMPOSER 0x00000800
+#define GRALLOC_USAGE_HW_FB 0x00001000
+#define GRALLOC_USAGE_HW_VIDEO_ENCODER 0x00010000
+#define GRALLOC_USAGE_HW_CAMERA_WRITE 0x00020000
+#define GRALLOC_USAGE_HW_CAMERA_READ 0x00040000
+#define GRALLOC_USAGE_HW_CAMERA_MASK 0x00060000
+#define GRALLOC_USAGE_HW_MASK 0x00071F00
+
+// Pixel formats
+#define HAL_PIXEL_FORMAT_RGBA_8888 1
+#define HAL_PIXEL_FORMAT_RGBX_8888 2
+#define HAL_PIXEL_FORMAT_RGB_888 3
+#define HAL_PIXEL_FORMAT_RGB_565 4
+#define HAL_PIXEL_FORMAT_BGRA_8888 5
+#define HAL_PIXEL_FORMAT_RGBA_5551 6
+#define HAL_PIXEL_FORMAT_RGBA_4444 7
+
+typedef struct android_native_base_t {
+    int magic;
+    int version;
+    void* reserved[4];
+    void (*incRef)(struct android_native_base_t* base);
+    void (*decRef)(struct android_native_base_t* base);
+} android_native_base_t;
+
+typedef struct ANativeWindowBuffer {
+    android_native_base_t common;
+    int width;
+    int height;
+    int stride;
+    int format;
+    int usage;
+    void* reserved[2];
+    void* handle;
+    void* reserved_proc[8];
+} ANativeWindowBuffer_t;
+
+// Minimal gralloc module structure
+typedef struct gralloc_module_t {
+    struct hw_module_t common;
+    int (*registerBuffer)(struct gralloc_module_t const* module, void* handle);
+    int (*unregisterBuffer)(struct gralloc_module_t const* module, void* handle);
+    int (*lock)(struct gralloc_module_t const* module, void* handle, int usage, int l, int t, int w, int h, void** vaddr);
+    int (*unlock)(struct gralloc_module_t const* module, void* handle);
+    int (*perform)(struct gralloc_module_t const* module, int operation, ...);
+    void* reserved_proc[7];
+} gralloc_module_t;
+
+typedef struct alloc_device_t {
+    struct hw_device_t common;
+    int (*alloc)(struct alloc_device_t* dev, int w, int h, int format, int usage, void** handle, int* stride);
+    int (*free)(struct alloc_device_t* dev, void* handle);
+    void* reserved_proc[7];
+} alloc_device_t;
+
+__END_DECLS
+
+#endif  // HARDWARE_GRALLOC_H_
+''')
+        logger.info(f"✓ Created hardware/gralloc.h stub")
+        
         # 创建 vndk/hardware_buffer.h stub
         vndk_dir = engine_src / 'vndk'
         vndk_dir.mkdir(parents=True, exist_ok=True)
