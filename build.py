@@ -239,6 +239,14 @@ config("sdk") {
   }
   if (defined(custom_sysroot) && custom_sysroot != "") {
     cflags += [ "-idirafter$custom_sysroot/usr/include" ]
+    # Termux glib/gtk headers are in subdirectories
+    cflags += [ "-I$custom_sysroot/usr/include/glib-2.0" ]
+    cflags += [ "-I$custom_sysroot/usr/include/gtk-3.0" ]
+    cflags += [ "-I$custom_sysroot/usr/include/pango-1.0" ]
+    cflags += [ "-I$custom_sysroot/usr/include/cairo" ]
+    cflags += [ "-I$custom_sysroot/usr/include/gdk-pixbuf-2.0" ]
+    cflags += [ "-I$custom_sysroot/usr/include/harfbuzz" ]
+    cflags += [ "-I$custom_sysroot/usr/include/freetype2" ]
     lib_dirs += [ "$custom_sysroot/usr/lib" ]
   }
 }
