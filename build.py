@@ -521,10 +521,11 @@ typedef VkResult (VKAPI_PTR *PFN_vkAcquireImageANDROID)(VkDevice device, VkImage
 typedef VkResult (VKAPI_PTR *PFN_vkQueueSignalReleaseImageANDROID)(VkQueue queue, uint32_t waitSemaphoreCount, const VkSemaphore* pWaitSemaphores, VkImage image, int* pNativeFenceFd);
 
 // Stub implementations (return success)
-static inline VkResult vkGetSwapchainGrallocUsageANDROID(VkDevice device, VkFormat format, VkImageUsageFlags imageUsage, int* grallocUsage) { *grallocUsage = 0; return VK_SUCCESS; }
-static inline VkResult vkGetSwapchainGrallocUsage2ANDROID(VkDevice device, VkFormat format, VkImageUsageFlags imageUsage, VkSwapchainImageUsageFlagsANDROID swapchainImageUsage, uint64_t* grallocUsage, uint64_t* grallocUsage2) { *grallocUsage = 0; *grallocUsage2 = 0; return VK_SUCCESS; }
-static inline VkResult vkAcquireImageANDROID(VkDevice device, VkImage image, int nativeFenceFd, VkSemaphore semaphore, VkFence fence) { return VK_SUCCESS; }
-static inline VkResult vkQueueSignalReleaseImageANDROID(VkQueue queue, uint32_t waitSemaphoreCount, const VkSemaphore* pWaitSemaphores, VkImage image, int* pNativeFenceFd) { *pNativeFenceFd = -1; return VK_SUCCESS; }
+// Only declare, do not define — libVulkan.cpp provides the implementation
+VKAPI_ATTR VkResult VKAPI_CALL vkGetSwapchainGrallocUsageANDROID(VkDevice device, VkFormat format, VkImageUsageFlags imageUsage, int* grallocUsage);
+VKAPI_ATTR VkResult VKAPI_CALL vkGetSwapchainGrallocUsage2ANDROID(VkDevice device, VkFormat format, VkImageUsageFlags imageUsage, VkSwapchainImageUsageFlagsANDROID swapchainImageUsage, uint64_t* grallocUsage, uint64_t* grallocUsage2);
+VKAPI_ATTR VkResult VKAPI_CALL vkAcquireImageANDROID(VkDevice device, VkImage image, int nativeFenceFd, VkSemaphore semaphore, VkFence fence);
+VKAPI_ATTR VkResult VKAPI_CALL vkQueueSignalReleaseImageANDROID(VkQueue queue, uint32_t waitSemaphoreCount, const VkSemaphore* pWaitSemaphores, VkImage image, int* pNativeFenceFd);
 
 #ifdef __cplusplus
 }
@@ -626,6 +627,11 @@ __BEGIN_DECLS
 #define GRALLOC_USAGE_SW_WRITE_RARELY 0x00000020
 #define GRALLOC_USAGE_SW_WRITE_OFTEN 0x00000030
 #define GRALLOC_USAGE_SW_WRITE_MASK 0x000000F0
+
+// GRALLOC1 macros (used by libVulkan.cpp)
+#define GRALLOC1_PRODUCER_USAGE_CPU_WRITE_OFTEN 0x00000030
+#define GRALLOC1_CONSUMER_USAGE_CPU_READ_OFTEN 0x00000003
+
 #define GRALLOC_USAGE_HW_TEXTURE 0x00000100
 #define GRALLOC_USAGE_HW_RENDER 0x00000200
 #define GRALLOC_USAGE_HW_2D 0x00000400
