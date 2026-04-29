@@ -833,6 +833,14 @@ __END_DECLS
                     vk_physical_device_hpp.write_text(content)
                     logger.info(f"✓ Added #include vk_android_extensions.h to VkPhysicalDevice.hpp")
 
+        # 创建 swiftshader commit.h (git版本信息文件，否则编译失败)
+        swiftshader_vulkan_dir = engine_src / 'flutter/third_party/swiftshader/src/Vulkan'
+        commit_h = swiftshader_vulkan_dir / 'commit.h'
+        if not commit_h.exists():
+            # 使用一个固定的commit hash stub
+            commit_h.write_text('#define SWIFTSHADER_GIT_HASH "flutter-engine-build"\n')
+            logger.info(f"✓ Created swiftshader commit.h stub")
+
 
     def patch(self, *, file, path):
         repo = git.Repo(path)
