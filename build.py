@@ -418,6 +418,28 @@ if (is_termux) {
             else:
                 logger.info("✓ linux/BUILD.gn already patched")
         
+        # Patch fl_view_accessible.cc - 把 atk include 移出 extern "C" 块
+        # 原因：extern "C" 内不能包含 C++ 模板头文件
+        fl_view_accessible_path = engine_src / 'flutter/shell/platform/linux/fl_view_accessible.cc'
+        if fl_view_accessible_path.exists():
+            content = fl_view_accessible_path.read_text()
+            
+            # 检查是否需要 patch（extern "C" 在 atk include 之前）
+            if 'extern "C" {\n#include <atk/atk.h>' in content or "extern \"C\" {\n#include <atk/atk.h>" in content:
+                # 把 atk include 移到 extern "C" 块外面
+                content = content.replace(
+                    'extern "C" {\n#include <atk/atk.h>',
+                    '#include <atk/atk.h>\nextern "C" {'
+                )
+                content = content.replace(
+                    "extern \"C\" {\n#include <atk/atk.h>",
+                    "#include <atk/atk.h>\nextern \"C\" {"
+                )
+                fl_view_accessible_path.write_text(content)
+                logger.info(f"✓ Patched fl_view_accessible.cc (moved atk.h outside extern C)")
+            else:
+                logger.info("✓ fl_view_accessible.cc already patched or not needed")
+        
         # 创建 Android Vulkan 扩展 stub 头文件 (swiftshader 需要)
         swiftshader_vulkan_dir = engine_src / 'flutter/third_party/swiftshader/include/vulkan'
         swiftshader_vulkan_dir.mkdir(parents=True, exist_ok=True)
