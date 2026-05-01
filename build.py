@@ -243,6 +243,7 @@ config("sdk") {
     cflags += [ "-I$custom_sysroot/usr/include/glib-2.0" ]
     cflags += [ "-I$custom_sysroot/usr/lib/glib-2.0/include" ]
     cflags += [ "-I$custom_sysroot/usr/include/gtk-3.0" ]
+    cflags += [ "-I$custom_sysroot/usr/include/atk-1.0" ]
     cflags += [ "-I$custom_sysroot/usr/include/pango-1.0" ]
     cflags += [ "-I$custom_sysroot/usr/include/cairo" ]
     cflags += [ "-I$custom_sysroot/usr/include/gdk-pixbuf-2.0" ]
