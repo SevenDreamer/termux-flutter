@@ -165,11 +165,8 @@ config("compiler") {
       "-Wl,-z,now",
       "-Wl,-z,relro",
       "-Wl,--undefined-version",
-      "-Wl,--no-undefined",
-      "-Wl,--exclude-libs,ALL",
       "-Wl,--icf=all",
       "-Wl,-z,max-page-size=65536",
-      "-llog",  # Android log library for __android_log_vprint
     ]
     defines = [
       "__TERMUX__",
@@ -224,6 +221,7 @@ config("executable_ldconfig") {
     ldflags = [
       "-Bdynamic",
       "-Wl,-z,nocopyreloc",
+      "-llog",  # Android log library for __android_log_vprint (dart executable)
     ]
   } else {
     configs = ["//build/config/gcc:executable_ldconfig"]
