@@ -172,9 +172,7 @@ config("compiler") {
       "__TERMUX__",
       "HAVE_SYS_UIO_H"
     ]
-    if (!using_sanitizer) {
-      ldflags += [ "-Wl,-z,defs" ]
-    }
+    # NOTE: -Wl,-z,defs removed - too strict for shared libs with optional symbols like SkDebugf
     if (current_cpu == "arm64") {
       cflags += [ "--target=aarch64-linux-android${termux_api_level}" ]
       ldflags += [ "--target=aarch64-linux-android${termux_api_level}" ]
