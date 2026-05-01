@@ -169,6 +169,7 @@ config("compiler") {
       "-Wl,--exclude-libs,ALL",
       "-Wl,--icf=all",
       "-Wl,-z,max-page-size=65536",
+      "-llog",  # Android log library for __android_log_vprint
     ]
     defines = [
       "__TERMUX__",
