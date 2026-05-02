@@ -4,17 +4,50 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write  # Required for creating releases
+  contents: write
 
 jobs:
-  Ubuntu:
+  build:
     runs-on: ubuntu-latest
     steps:
-    - name: checkout
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
+    # ============ 缓存配置 ============
+    # Flutter Engine 源码 (~10GB, sync 耗时 ~30min)
+    - name: Cache Flutter Engine
+      uses: actions/cache@v4
+      id: cache-engine
+      with:
+        path: |
+          ./flutter
+          ./.gclient
+        key: flutter-engine-${{ hashFiles('build.toml') }}-v1
+        restore-keys: |
+          flutter-engine-
+
+    # depot_tools (gclient/gn 工具)
+    - name: Cache depot_tools
+      uses: actions/cache@v4
+      with:
+        path: ~/depot_tools
+        key: depot-tools-v1
+
+    # ccache 编译缓存 (加速增量编译)
+    - name: Cache ccache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ccache
+        key: ccache-${{ github.sha }}
+        restore-keys: |
+          ccache-${{ github.ref_name }}-
+          ccache-
+
+    # ============ 构建步骤 ============
     - name: install deps
-      run: sudo apt update && sudo apt install libfreetype-dev ninja-build -y
+      run: |
+        sudo apt update && sudo apt install libfreetype-dev ninja-build ccache -y
+        ccache --set-config=max_size=3G
+        ccache --set-config=compiler_check=content  # 内容变化才重新编译
 
     - name: setup depot-tools
       uses: newkdev/setup-depot-tools@v1.0.1
@@ -22,9 +55,18 @@ jobs:
     - name: install python requirements
       run: pip install -r requirements.txt
 
+    - name: show cache status
+      run: |
+        echo "Engine cache hit: ${{ steps.cache-engine.outputs.cache-hit }}"
+        ccache --show-stats || true
+
     - name: build
       run: python build.py
 
+    - name: show ccache stats
+      run: ccache --show-stats
+
+    # ============ 发布 ============
     - name: parse tag
       id: parser
       run: |
@@ -36,7 +78,5 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ steps.parser.outputs.TAG }}
-        name: ${{ steps.parse_toml.outputs.TITLE }}
+        name: ${{ steps.parser.outputs.TITLE }}
         files: '**/*.deb'
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
