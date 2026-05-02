@@ -1052,6 +1052,71 @@ __END_DECLS
             # 使用一个固定的commit hash stub
             commit_h.write_text('#define SWIFTSHADER_GIT_HASH "flutter-engine-build"\n')
             logger.info(f"✓ Created swiftshader commit.h stub")
+        
+        # 创建 swiftshader 缺失符号的 stub 实现
+        # flutter_tester 链接 swiftshader_libvulkan_static 时需要以下符号:
+        #   - SkDebugf: Skia 调试打印函数
+        #   - AHardwareBufferExternalMemory::GetVkFormatFromAHBFormat: Android HW Buffer 格式转换
+        swiftshader_stubs = swiftshader_vulkan_dir / 'termux_stubs.cpp'
+        if not swiftshader_stubs.exists():
+            swiftshader_stubs.write_text('''// Termux stub implementations for swiftshader missing symbols
+#include <cstdarg>
+#include <cstdio>
+#include <cstdint>
+
+// SkDebugf stub - Skia debug print function
+// This is normally provided by Skia, but swiftshader uses it for debug logging
+extern "C" void SkDebugf(const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+    vfprintf(stderr, format, args);
+    va_end(args);
+}
+
+// AHardwareBufferExternalMemory stub for swiftshader Vulkan
+// SwiftShader doesn't actually use Android Hardware Buffers at runtime,
+// but the linker needs these symbols when building for Android target
+namespace vk {
+class AHardwareBufferExternalMemory {
+public:
+    // Convert Android Hardware Buffer format to Vulkan format
+    // Returns VK_FORMAT_UNDEFINED for unknown formats (safe fallback)
+    static uint32_t GetVkFormatFromAHBFormat(uint32_t ahb_format) {
+        // Map common AHB formats to Vulkan formats
+        // AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM = 1
+        // AHARDWAREBUFFER_FORMAT_R8G8B8X8_UNORM = 2  
+        // AHARDWAREBUFFER_FORMAT_R8G8B8_UNORM = 3
+        // AHARDWAREBUFFER_FORMAT_R5G6B5_UNORM = 4
+        switch (ahb_format) {
+            case 1: return 37;  // VK_FORMAT_R8G8B8A8_UNORM
+            case 2: return 37;  // VK_FORMAT_R8G8B8A8_UNORM (treat X as A)
+            case 3: return 29;  // VK_FORMAT_R8G8B8_UNORM
+            case 4: return 4;   // VK_FORMAT_R5G6B5_UNORM_PACK16
+            default: return 0;  // VK_FORMAT_UNDEFINED
+        }
+    }
+};
+}  // namespace vk
+''')
+            logger.info(f"✓ Created swiftshader termux_stubs.cpp")
+        
+        # 修改 swiftshader BUILD.gn 添加 stub 文件
+        swiftshader_build_gn = swiftshader_vulkan_dir / 'BUILD.gn'
+        if swiftshader_build_gn.exists():
+            content = swiftshader_build_gn.read_text()
+            if 'termux_stubs.cpp' not in content:
+                # 找到 swiftshader_libvulkan_static 源文件列表
+                import re
+                # 在源文件列表中添加 termux_stubs.cpp
+                # 查找类似 "sources = [ ..." 的模式
+                pattern = r'(swiftshader_libvulkan_static\([^)]*\)\s*\{[^}]*sources\s*=\s*\[[^\]]*)'
+                match = re.search(pattern, content, re.DOTALL)
+                if match:
+                    # 在 sources 列表末尾添加
+                    insert_pos = match.end() - 1  # 闭合括号前
+                    content = content[:insert_pos] + '  "termux_stubs.cpp",\n        ' + content[insert_pos:]
+                    swiftshader_build_gn.write_text(content)
+                    logger.info(f"✓ Added termux_stubs.cpp to swiftshader_libvulkan_static")
 
 
     def patch(self, *, file, path):
@@ -1109,13 +1174,7 @@ __END_DECLS
         root = root or self.root
         cmd = [
             'ninja', '-C', utils.target_output(root, arch, mode),
-            # Build specific targets to skip flutter_tester which needs swiftshader AHB support
-            # flutter_tester links swiftshader_libvulkan_static which requires:
-            #   - SkDebugf (Skia debug function)
-            #   - AHardwareBufferExternalMemory::GetVkFormatFromAHBFormat (Android HW Buffer)
-            # These are not available in Termux environment
-            'flutter/shell/platform/embedder:flutter_engine',
-            'flutter/sky',
+            'flutter',  # Build full flutter target including flutter_tester
         ]
         if jobs:
             cmd.append(f'-j{jobs}')
