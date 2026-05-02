@@ -1109,13 +1109,13 @@ __END_DECLS
         root = root or self.root
         cmd = [
             'ninja', '-C', utils.target_output(root, arch, mode),
-            'flutter',
-            # disable zip_archives
-            # 'flutter/build/archives:artifacts',
-            # 'flutter/build/archives:dart_sdk_archive',
-            # 'flutter/build/archives:flutter_patched_sdk',
-            # 'flutter/shell/platform/linux:flutter_gtk',
-            # 'flutter/tools/font_subset',
+            # Build specific targets to skip flutter_tester which needs swiftshader AHB support
+            # flutter_tester links swiftshader_libvulkan_static which requires:
+            #   - SkDebugf (Skia debug function)
+            #   - AHardwareBufferExternalMemory::GetVkFormatFromAHBFormat (Android HW Buffer)
+            # These are not available in Termux environment
+            'flutter/shell/platform/embedder:flutter_engine',
+            'flutter/sky',
         ]
         if jobs:
             cmd.append(f'-j{jobs}')
