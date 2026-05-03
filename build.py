@@ -1105,18 +1105,79 @@ public:
         if swiftshader_build_gn.exists():
             content = swiftshader_build_gn.read_text()
             if 'termux_stubs.cpp' not in content:
-                # 找到 swiftshader_libvulkan_static 源文件列表
-                import re
-                # 在源文件列表中添加 termux_stubs.cpp
-                # 查找类似 "sources = [ ..." 的模式
-                pattern = r'(swiftshader_libvulkan_static\([^)]*\)\s*\{[^}]*sources\s*=\s*\[[^\]]*)'
-                match = re.search(pattern, content, re.DOTALL)
-                if match:
-                    # 在 sources 列表末尾添加
-                    insert_pos = match.end() - 1  # 闭合括号前
-                    content = content[:insert_pos] + '  "termux_stubs.cpp",\n        ' + content[insert_pos:]
-                    swiftshader_build_gn.write_text(content)
-                    logger.info(f"✓ Added termux_stubs.cpp to swiftshader_libvulkan_static")
+                # 使用更健壮的方法找到 swiftshader_libvulkan_static 的 sources 列表
+                # GN 格式可能是:
+                #   swiftshader_libvulkan_static("name") { ... sources = [ ... ] ... }
+                # 或
+                #   swiftshader_libvulkan_static = { ... sources = [ ... ] ... }
+                
+                def add_to_sources_list(content: str, target_name: str, new_file: str) -> str:
+                    """在 GN target 的 sources 列表中添加文件"""
+                    import re
+                    
+                    # 方法1: 查找 target("name") { ... sources = [ ... ] }
+                    # 方法2: 查找 sources = [ ... ] 在 target 块内
+                    
+                    # 先找到 swiftshader_libvulkan_static 的所有出现位置
+                    target_pattern = rf'{target_name}\s*\([^)]*\)\s*\{{'
+                    match = re.search(target_pattern, content)
+                    
+                    if not match:
+                        # 尝试不带括号的形式: target = { ... }
+                        target_pattern = rf'{target_name}\s*=\s*\{{'
+                        match = re.search(target_pattern, content)
+                    
+                    if not match:
+                        logger.warning(f"未找到 GN target: {target_name}")
+                        return content
+                    
+                    # 找到 target 块的起始位置
+                    block_start = match.end() - 1  # 开括号 { 的位置
+                    
+                    # 找到匹配的闭括号 }
+                    brace_count = 1
+                    pos = block_start + 1
+                    while pos < len(content) and brace_count > 0:
+                        if content[pos] == '{':
+                            brace_count += 1
+                        elif content[pos] == '}':
+                            brace_count -= 1
+                        pos += 1
+                    
+                    block_end = pos
+                    target_block = content[block_start:block_end]
+                    
+                    # 在 target 块内找到 sources 列表
+                    sources_match = re.search(r'sources\s*=\s*\[', target_block)
+                    if not sources_match:
+                        logger.warning(f"未在 {target_name} 中找到 sources 列表")
+                        return content
+                    
+                    # 找到 sources 列表的闭合 ]
+                    sources_start = sources_match.end()
+                    bracket_count = 1
+                    pos = sources_start
+                    while pos < len(target_block) and bracket_count > 0:
+                        if target_block[pos] == '[':
+                            bracket_count += 1
+                        elif target_block[pos] == ']':
+                            bracket_count -= 1
+                        pos += 1
+                    
+                    sources_end = pos
+                    
+                    # 在 ] 前插入新文件
+                    new_block = (target_block[:sources_end - 1] + 
+                                f'  "{new_file}",\n    ' + 
+                                target_block[sources_end - 1:])
+                    
+                    # 替换原内容
+                    return content[:block_start] + new_block + content[block_end:]
+                
+                content = add_to_sources_list(content, 'swiftshader_libvulkan_static', 'termux_stubs.cpp')
+                swiftshader_build_gn.write_text(content)
+                logger.info(f"✓ Added termux_stubs.cpp to swiftshader_libvulkan_static")
+
 
 
     def patch(self, *, file, path):
@@ -1222,3 +1283,4 @@ if __name__ == '__main__':
             "<level>{message}</level>")
         )
     fire.Fire(Build())
+
